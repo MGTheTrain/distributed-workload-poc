@@ -1,0 +1,166 @@
+services:
+  # PostgreSQL Database for MLflow
+  postgres:
+    image: postgres:15-alpine
+    container_name: mlflow_db
+    environment:
+      - POSTGRES_USER=mlflow
+      - POSTGRES_PASSWORD=mlflow
+      - POSTGRES_DB=mlflow
+    networks:
+      - distributed-workload-network
+
+  # MLflow Tracking Server
+  mlflow:
+    build:
+      context: .
+      dockerfile: ./infra/mlflow/Dockerfile
+    container_name: mlflow
+    depends_on:
+      postgres:
+        condition: service_started
+      localstack:
+        condition: service_started
+      create-bucket:
+        condition: service_completed_successfully
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow@postgres:5432/mlflow
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=s3://mlflow-artifacts/
+      - MLFLOW_S3_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://mlflow:mlflow@postgres:5432/mlflow
+      --default-artifact-root s3://mlflow-artifacts/
+      --host 0.0.0.0
+      --port 5000
+      --cors-allowed-origins "*"
+      --allowed-hosts "*"
+    networks:
+      - distributed-workload-network
+
+  # LocalStack for AWS S3 Emulation
+  localstack:
+    image: localstack/localstack:4.9.0
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - SERVICES=s3
+    restart: on-failure
+    networks:
+      - distributed-workload-network
+
+  create-bucket:
+    image: localstack/localstack:4.9.0
+    container_name: create-bucket
+    depends_on:
+      localstack:
+        condition: service_started
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        awslocal --endpoint-url=http://localstack:4566 s3 mb s3://mlflow-artifacts
+    restart: "no"
+    networks:
+      - distributed-workload-network
+
+  # # Prefect Server
+  # prefect:
+  #   build:
+  #     context: .
+  #     dockerfile: ./infra/prefect/Dockerfile
+  #   container_name: prefect
+  #   ports:
+  #     - "4200:4200"
+  #   command: >
+  #     prefect server start --host 0.0.0.0
+  #   environment:
+  #     - PREFECT_API_URL=http://prefect:4200/api
+  #     - PREFECT_SERVER_API_HOST=0.0.0.0
+  #     - RAY_ADDRESS=ray-head:6379
+  #     - MLFLOW_TRACKING_URI=http://mlflow:5000
+  #   networks:
+  #     - distributed-workload-network
+  #   depends_on:
+  #     - mlflow
+
+  # Ray Head Node
+  ray-head:
+    build:
+      context: .
+      dockerfile: ./infra/ray/Dockerfile
+    container_name: ray-head
+    hostname: ray-head
+    ports:
+      - "8265:8265"   # Ray Dashboard
+      - "10001:10001" # Ray Client
+      - "8000:8000"   # Ray Serve
+    command: >
+      ray start --head
+      --port=6379
+      --dashboard-host=0.0.0.0
+      --dashboard-port=8265
+      --num-cpus=10
+      --memory=5000000000
+      --object-store-memory=2000000000
+      --block
+    environment:
+      - RAY_LOG_TO_STDERR=1
+      - DATA_DIR=/workspace/data
+      - RAY_ADDRESS=ray-head:6379
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_S3_ENDPOINT_URL=http://localstack:4566
+      - MLFLOW_S3_ENDPOINT_URL=http://localstack:4566
+    volumes:
+      - ray-data:/workspace/data
+    networks:
+      - distributed-workload-network
+    depends_on:
+      - mlflow
+
+  # Ray Worker Nodes
+  ray-worker:
+    build:
+      context: .
+      dockerfile: ./infra/ray/Dockerfile
+    depends_on:
+      - ray-head
+    deploy:
+      replicas: 2
+    command: >
+      bash -c "
+      sleep 30 &&
+      ray start --address=ray-head:6379 --block
+      "
+    environment:
+      - RAY_LOG_TO_STDERR=1
+      - DATA_DIR=/workspace/data
+      - RAY_ADDRESS=ray-head:6379
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_S3_ENDPOINT_URL=http://localstack:4566
+      - MLFLOW_S3_ENDPOINT_URL=http://localstack:4566
+    volumes:
+      - ray-data:/workspace/data
+    networks:
+      - distributed-workload-network
+
+networks:
+  distributed-workload-network:
+    driver: bridge
+
+volumes:
+  ray-data:

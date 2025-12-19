@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Data files
+data/
+*.csv
+*.parquet
+*.h5
+*.hdf5
+
+# Compiled files
+*.o
+*.out
+benchmarks/mpi/mpi_allreduce
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+combined.txt

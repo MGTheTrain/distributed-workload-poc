@@ -1,0 +1,24 @@
+{
+    "name": "HPC Workload PoC - Kind Cluster",
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+    "features": {
+      "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+      "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
+      "ghcr.io/devcontainers/features/python:1": {}
+    },
+    "postCreateCommand": "bash .devcontainer/kind/setup.sh",
+    "remoteUser": "root",
+    "privileged": true,
+    "mounts": [
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    ],
+    "runArgs": ["--network=host"],
+    "forwardPorts": [
+        8265, 10001, 8000
+    ],
+    "portsAttributes": {
+        "8265": {"label": "Ray Dashboard"},
+        "10001": {"label": "Ray Client"},
+        "8000": {"label": "Ray Serve"}
+    }
+}

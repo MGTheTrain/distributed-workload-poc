@@ -1,0 +1,22 @@
+# serve_config.yaml
+# Production deployment configuration for Ray Serve
+
+http_options:
+  host: 0.0.0.0
+  port: 8000
+
+applications:
+  - name: mnist_inference
+    route_prefix: /
+    import_path: ray_serve_model:deployment
+    runtime_env:
+      env_vars:
+        AWS_ACCESS_KEY_ID: "test"
+        AWS_SECRET_ACCESS_KEY: "test"
+        AWS_DEFAULT_REGION: "us-east-1"
+        AWS_S3_ENDPOINT_URL: "http://localstack:4566"
+        MLFLOW_TRACKING_URI: "http://mlflow:5000"
+        MLFLOW_S3_ENDPOINT_URL: "http://localstack:4566"
+        S3_BUCKET: "mlflow-artifacts"
+        DATA_DIR: "/workspace/data"
+        PYTHONPATH: "/workspace/workloads/inference"
