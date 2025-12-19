@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Distributed ML Model Serving with Ray Serve, MLflow, and Ray Data
-Handles model loading from MLflow/S3, autoscaling, batch inference, and FastAPI integration
+Distributed ML Model Serving with Ray Serve and MLflow
+Handles model loading from MLflow with S3 backend, autoscaling, batch inference and FastAPI integration
 """
 import io
 import os
@@ -33,9 +33,9 @@ class Config:
     AWS_DEFAULT_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
     AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL", "http://localstack:4566")
     S3_BUCKET = os.getenv("S3_BUCKET", "mlflow-artifacts")
-    MIN_REPLICAS = 1
-    MAX_REPLICAS = 4
-    TARGET_REQUESTS_PER_REPLICA = 10
+    MIN_REPLICAS = int(os.getenv("MIN_REPLICAS", "1"))
+    MAX_REPLICAS = int(os.getenv("MAX_REPLICAS", "4"))
+    TARGET_REQUESTS_PER_REPLICA = int(os.getenv("TARGET_REQUESTS_PER_REPLICA", "10"))
     RUN_ID = os.getenv("MLFLOW_RUN_ID", None)
 
 # Environment setup for MLflow S3 access

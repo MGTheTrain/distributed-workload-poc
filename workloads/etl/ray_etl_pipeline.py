@@ -68,13 +68,13 @@ def ensure_bucket_exists(s3_client, bucket: str) -> None:
     """Ensure S3 bucket exists, create if it doesn't"""
     try:
         s3_client.head_bucket(Bucket=bucket)
-        print(f"✅ S3 bucket exists: {bucket}")
+        print(f" S3 bucket exists: {bucket}")
     except ClientError:
         try:
             s3_client.create_bucket(Bucket=bucket)
-            print(f"✅ Created S3 bucket: {bucket}")
+            print(f" Created S3 bucket: {bucket}")
         except ClientError as e:
-            print(f"⚠️  Could not create bucket: {e}")
+            print(f"  Could not create bucket: {e}")
             raise
 
 
@@ -88,7 +88,7 @@ def upload_to_s3(
     try:
         file_size_mb = local_file.stat().st_size / 1024 / 1024
         
-        print(f"📤 Uploading to S3...")
+        print(f" Uploading to S3...")
         print(f"   Local: {local_file}")
         print(f"   Size: {file_size_mb:.2f} MB")
         
@@ -97,14 +97,14 @@ def upload_to_s3(
         upload_time = time.time() - upload_start
         
         s3_uri = f"s3://{bucket}/{s3_key}"
-        print(f"✅ Uploaded to: {s3_uri}")
+        print(f" Uploaded to: {s3_uri}")
         print(f"   Upload time: {upload_time:.2f}s")
         print(f"   Throughput: {file_size_mb / upload_time:.2f} MB/s")
         
         return s3_uri
         
     except ClientError as e:
-        print(f"❌ S3 upload failed: {e}")
+        print(f" S3 upload failed: {e}")
         raise
 
 
@@ -113,7 +113,7 @@ def upload_to_s3(
 def generate_sales_data(num_rows: int, output_file: Path) -> None:
     """Generate synthetic sales data for ETL testing"""
     
-    print(f"\n📊 Generating {num_rows:,} rows of sales data...")
+    print(f"\n Generating {num_rows:,} rows of sales data...")
     
     np.random.seed(Config.RANDOM_SEED)
     
@@ -149,10 +149,10 @@ def generate_sales_data(num_rows: int, output_file: Path) -> None:
     
     # Summary
     file_size_mb = output_file.stat().st_size / 1024 / 1024
-    print(f"✅ Generated {len(df):,} rows")
-    print(f"💾 Saved to: {output_file}")
-    print(f"📏 File size: {file_size_mb:.2f} MB")
-    print(f"\n📊 Data summary:")
+    print(f" Generated {len(df):,} rows")
+    print(f" Saved to: {output_file}")
+    print(f" File size: {file_size_mb:.2f} MB")
+    print(f"\n Data summary:")
     print(f"   Categories: {df['category'].nunique()}")
     print(f"   Date range: {df['date'].min()} to {df['date'].max()}")
     print(f"   Price range: ${df['price'].min():.2f} to ${df['price'].max():.2f}")
@@ -207,7 +207,7 @@ def run_etl_pipeline() -> None:
     """Execute distributed ETL pipeline using Ray Data"""
     
     print("\n" + "="*70)
-    print("🔄 RAY DATA ETL PIPELINE WITH S3 STORAGE")
+    print(" RAY DATA ETL PIPELINE WITH S3 STORAGE")
     print("="*70 + "\n")
     
     start_time = time.time()
@@ -218,10 +218,10 @@ def run_etl_pipeline() -> None:
     
     # Step 0: Generate sample data if not exists
     if not Config.INPUT_FILE.exists():
-        print("📝 Input file not found. Generating sample data...")
+        print(" Input file not found. Generating sample data...")
         generate_sales_data(Config.NUM_ROWS, Config.INPUT_FILE)
     else:
-        print(f"✅ Using existing input file: {Config.INPUT_FILE}")
+        print(f" Using existing input file: {Config.INPUT_FILE}")
     
     # Connect to Ray
     ray.init(address=Config.RAY_ADDRESS, ignore_reinit_error=True)
@@ -230,7 +230,7 @@ def run_etl_pipeline() -> None:
     num_cpus = int(cluster_resources.get('CPU', 0))
     num_nodes = len(ray.nodes())
     
-    print(f"\n🚀 Connected to Ray cluster:")
+    print(f"\n Connected to Ray cluster:")
     print(f"   Address: {Config.RAY_ADDRESS}")
     print(f"   CPUs: {num_cpus}")
     print(f"   Nodes: {num_nodes}")
@@ -245,19 +245,19 @@ def run_etl_pipeline() -> None:
         row_count = ds.count()
         
         load_time = time.time() - load_start
-        print(f"✅ Loaded {row_count:,} rows in {load_time:.2f}s")
+        print(f" Loaded {row_count:,} rows in {load_time:.2f}s")
         
         # Step 2: Transform with data quality filtering
-        print(f"\n🔄 Step 2: Applying transformations and quality filters...")
+        print(f"\n Step 2: Applying transformations and quality filters...")
         transform_start = time.time()
         
         ds_transformed = ds.flat_map(process_row)
         
         transform_time = time.time() - transform_start
-        print(f"✅ Transformations applied in {transform_time:.2f}s")
+        print(f" Transformations applied in {transform_time:.2f}s")
         
         # Step 3: Aggregate by category, year, quarter
-        print(f"\n📊 Step 3: Computing aggregations...")
+        print(f"\n Step 3: Computing aggregations...")
         agg_start = time.time()
         
         agg_ds = ds_transformed.groupby(['category', 'year', 'quarter']).aggregate(
@@ -268,7 +268,7 @@ def run_etl_pipeline() -> None:
         )
         
         agg_time = time.time() - agg_start
-        print(f"✅ Aggregations computed in {agg_time:.2f}s")
+        print(f" Aggregations computed in {agg_time:.2f}s")
         
         # Step 4: Materialize results
         print(f"\n⚡ Step 4: Materializing results...")
@@ -288,10 +288,10 @@ def run_etl_pipeline() -> None:
         
         materialize_time = time.time() - materialize_start
         output_rows = len(result_df)
-        print(f"✅ Materialized {output_rows:,} aggregated rows in {materialize_time:.2f}s")
+        print(f" Materialized {output_rows:,} aggregated rows in {materialize_time:.2f}s")
         
         # Step 5: Save to Parquet locally
-        print(f"\n💾 Step 5: Saving results to Parquet...")
+        print(f"\n Step 5: Saving results to Parquet...")
         save_start = time.time()
         
         Config.OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -299,8 +299,8 @@ def run_etl_pipeline() -> None:
         
         output_size_mb = Config.OUTPUT_FILE.stat().st_size / 1024 / 1024
         save_time = time.time() - save_start
-        print(f"✅ Results saved locally: {Config.OUTPUT_FILE}")
-        print(f"📏 Output size: {output_size_mb:.2f} MB")
+        print(f" Results saved locally: {Config.OUTPUT_FILE}")
+        print(f" Output size: {output_size_mb:.2f} MB")
         
         # Step 6: Upload to S3
         print(f"\n☁️  Step 6: Uploading to S3...")
@@ -333,9 +333,9 @@ def run_etl_pipeline() -> None:
         
         # Summary
         print("\n" + "="*70)
-        print("✅ PIPELINE COMPLETED SUCCESSFULLY")
+        print(" PIPELINE COMPLETED SUCCESSFULLY")
         print("="*70)
-        print(f"\n📊 Performance Metrics:")
+        print(f"\n Performance Metrics:")
         print(f"   Total execution time: {elapsed_time:.2f}s")
         print(f"   Throughput: {throughput:,.0f} rows/sec")
         print(f"   Load time: {load_time:.2f}s")
@@ -344,35 +344,35 @@ def run_etl_pipeline() -> None:
         print(f"   Materialize time: {materialize_time:.2f}s")
         print(f"   Save time: {save_time:.2f}s")
         
-        print(f"\n📈 Data Metrics:")
+        print(f"\n Data Metrics:")
         print(f"   Input rows: {row_count:,}")
         print(f"   Output rows: {output_rows:,}")
         print(f"   Records filtered: {records_filtered:,} ({filter_rate:.1f}%)")
         print(f"   Compression ratio: {row_count / output_rows:.1f}x")
         
-        print(f"\n💻 Cluster Info:")
+        print(f"\n Cluster Info:")
         print(f"   Ray address: {Config.RAY_ADDRESS}")
         print(f"   CPUs: {num_cpus}")
         print(f"   Nodes: {num_nodes}")
         
-        print(f"\n📁 Storage:")
+        print(f"\n Storage:")
         print(f"   Local: {Config.OUTPUT_FILE}")
         print(f"   S3 (versioned): {s3_uri}")
         print(f"   S3 (latest): s3://{Config.S3_BUCKET}/{latest_s3_key}")
         
-        print("\n📋 Sample Results (Top 10):")
+        print("\n Sample Results (Top 10):")
         print(result_df.head(10).to_string(index=False))
         
         print("\n" + "="*70 + "\n")
         
     except Exception as e:
-        print(f"\n❌ Pipeline failed: {e}")
+        print(f"\n Pipeline failed: {e}")
         traceback.print_exc()
         raise
     
     finally:
         ray.shutdown()
-        print("🔌 Ray cluster disconnected\n")
+        print(" Ray cluster disconnected\n")
 
 
 # Entry Point
@@ -383,7 +383,7 @@ def main():
         run_etl_pipeline()
         sys.exit(0)
     except Exception as e:
-        print(f"\n❌ ETL Pipeline Error: {e}")
+        print(f"\n ETL Pipeline Error: {e}")
         traceback.print_exc()
         sys.exit(1)
 

@@ -54,11 +54,11 @@ class Config:
     S3_BUCKET = os.getenv("S3_BUCKET", "mlflow-artifacts")
     
     # Tuning
-    NUM_SAMPLES = 5  # Limit memory usage
-    MAX_CONCURRENT_TRIALS = 3  # Limit parallel trials to prevent OOM
-    MAX_EPOCHS = 5   # Max epochs per trial
-    GRACE_PERIOD = 3  # Min epochs before early stopping
-    REDUCTION_FACTOR = 2
+    NUM_SAMPLES = int(os.getenv("NUM_SAMPLES", "5"))  # Limit memory usage
+    MAX_CONCURRENT_TRIALS = int(os.getenv("MAX_CONCURRENT_TRIALS", "3"))  # Limit parallel trials to prevent OOM
+    MAX_EPOCHS = int(os.getenv("MAX_EPOCHS", "5"))   # Max epochs per trial
+    GRACE_PERIOD = int(os.getenv("GRACE_PERIOD", "3"))  # Min epochs before early stopping
+    REDUCTION_FACTOR = int(os.getenv("REDUCTION_FACTOR", "2"))
 
 
 # Configure environment for MLflow S3 access
@@ -325,7 +325,7 @@ def main() -> None:
     
     # Connect to Ray cluster first
     ray.init(address=Config.RAY_ADDRESS, ignore_reinit_error=True)
-    print(f"🚀 Connected to Ray cluster: {Config.RAY_ADDRESS}")
+    print(f" Connected to Ray cluster: {Config.RAY_ADDRESS}")
     
     # Detect GPU availability safely
     @ray.remote

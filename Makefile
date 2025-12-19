@@ -1,6 +1,8 @@
 .PHONY: help compose-start compose-stop compose-rebuild compose-logs compose-clean \
         compose-etl-ray compose-train-ray compose-tune-ray \
         compose-serve-start-ray test-inference-api compose-serve-stop-ray \
+		compose-run-pipeline-prefect compose-deploy-model-prefect compose-run-etl-prefect \
+		compose-deploy-schedules-prefect \
 		open-ray open-mlflow k8s-deploy k8s-clean k8s-forward k8s-etl-ray
 
 help: ## Show this help message
@@ -24,6 +26,10 @@ open-ray: ## [Common] Open Ray Dashboard
 open-mlflow: ## [Common] Open MLflow Dashboard
 	@echo " Opening MLflow Dashboard..."
 	@open http://localhost:5000 2>/dev/null || xdg-open http://localhost:5000 2>/dev/null || echo "Open http://localhost:5000"
+
+open-prefect: ## [Common] Open Prefect Dashboard
+	@echo " Opening Prefect Dashboard..."
+	@open http://localhost:4200 2>/dev/null || xdg-open http://localhost:4200 2>/dev/null || echo "Open http://localhost:4200"
 
 test-inference-api: ## [Common] Test inference service API
 	@echo " Testing inference api..."
@@ -75,12 +81,30 @@ compose-tune-ray: ## [Compose] Run hyperparameter tuning (dashboard logs)
 
 compose-serve-start-ray: ## [Compose] Deploy inference service
 	@echo " Deploying inference service with Ray Serve..."
-	@docker compose exec ray-head bash -c "cd /workspace/workloads/inference && serve deploy serve_config.yaml"
+	@docker compose exec ray-head bash -c "ray job submit -- bash -c 'cd /workspace/workloads/inference && serve deploy serve_config.yaml'"
 
 compose-serve-stop-ray: ## [Compose] Stop inference service
 	@echo " Stopping inference service..."
 	@docker compose exec ray-head serve shutdown
 
+# Prefect Orchestrated Workloads
+
+compose-run-pipeline-prefect: ## [Compose] Run ML training pipeline (Prefect)
+	@echo " Running ML training pipeline via Prefect..."
+	@docker compose exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-pipeline
+
+compose-deploy-model-prefect: ## [Compose] Deploy model (Prefect)
+	@echo " Deploying model via Prefect..."
+	@docker compose exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-model
+
+compose-run-etl-prefect: ## [Compose] Run ETL only (Prefect)
+	@echo " Running ETL via Prefect..."
+	@docker compose exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-etl
+
+compose-deploy-schedules-prefect: ## [Compose] Deploy Prefect schedules
+	@echo " Deploying Prefect schedules..."
+	@docker compose exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-schedules
+	
 # Kubernetes Targets
 
 k8s-deploy: ## [K8s] Deploy to Kind cluster
@@ -98,4 +122,3 @@ k8s-forward: ## [K8s] Port-forward dashboards
 k8s-etl-ray: ## [K8s] Run Ray ETL on K8s
 	@echo " Running Ray ETL on Kubernetes..."
 	@kubectl exec -n ray deploy/ray-cluster-kuberay-head -- python /workspace/workloads/etl/ray_etl_pipeline.py
-

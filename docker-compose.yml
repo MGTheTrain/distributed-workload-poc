@@ -72,25 +72,22 @@ services:
     networks:
       - distributed-workload-network
 
-  # # Prefect Server
-  # prefect:
-  #   build:
-  #     context: .
-  #     dockerfile: ./infra/prefect/Dockerfile
-  #   container_name: prefect
-  #   ports:
-  #     - "4200:4200"
-  #   command: >
-  #     prefect server start --host 0.0.0.0
-  #   environment:
-  #     - PREFECT_API_URL=http://prefect:4200/api
-  #     - PREFECT_SERVER_API_HOST=0.0.0.0
-  #     - RAY_ADDRESS=ray-head:6379
-  #     - MLFLOW_TRACKING_URI=http://mlflow:5000
-  #   networks:
-  #     - distributed-workload-network
-  #   depends_on:
-  #     - mlflow
+  # Prefect Server
+  prefect:
+    build:
+      context: .
+      dockerfile: ./infra/prefect/Dockerfile
+    container_name: prefect
+    ports:
+      - "4200:4200"
+    command: >
+      prefect server start --host 0.0.0.0
+    environment:
+      - RAY_ADDRESS=ray-head:6379
+    networks:
+      - distributed-workload-network
+    depends_on:
+      - mlflow
 
   # Ray Head Node
   ray-head:

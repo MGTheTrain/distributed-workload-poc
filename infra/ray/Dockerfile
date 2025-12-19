@@ -2,12 +2,10 @@ FROM rayproject/ray:2.51.1-py312
 
 WORKDIR /workspace
 
-USER root
-
-COPY ./workloads ./workloads
-COPY ./data ./data
-
-RUN chmod 777 data/
+COPY ./workloads/etl ./workloads/etl
+COPY ./workloads/tuning ./workloads/tuning
+COPY ./workloads/training ./workloads/training
+COPY ./workloads/inference ./workloads/inference
 
 RUN pip install \
     pandas==2.3.3 \
@@ -19,11 +17,6 @@ RUN pip install \
     boto3==1.42.10 \
     python-multipart==0.0.21 \
     hyperopt==0.2.7 \
-    mlflow==3.7.0 \
-    prefect==3.6.6
-
-ENV PYTHONUNBUFFERED=1 \
-    RAY_LOG_TO_STDERR=1 \
-    MLFLOW_TRACKING_URI=http://mlflow:5000
+    mlflow==3.7.0
 
 EXPOSE 6379 8265 10001 8000

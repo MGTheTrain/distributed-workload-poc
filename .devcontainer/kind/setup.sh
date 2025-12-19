@@ -84,6 +84,7 @@ pip install --break-system-packages \
     boto3==1.42.10 \
     mlflow==3.7.0 \
     hyperopt==0.2.7 \
+    prefect==3.6.6 \
     ray==2.51.1
 
 echo -e "${GREEN}Setup complete.${NC}"

@@ -49,10 +49,10 @@ class Config:
     S3_BUCKET = os.getenv("S3_BUCKET", "mlflow-artifacts")
     
     # Training
-    LEARNING_RATE = 0.001541 # Changed from 0.001 (tuning found 0.001541)
-    BATCH_SIZE = 32 # Changed from 64 (tuning found 32 is optimal)
-    EPOCHS = 10  # Keep at 10 (tuning used 5, but train more)
-    NUM_WORKERS = 2
+    LEARNING_RATE = float(os.getenv("LEARNING_RATE", "0.001541")) # Changed from 0.001 (tuning found 0.001541)
+    BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32")) # Changed from 64 (tuning found 32 is optimal)
+    EPOCHS = int(os.getenv("EPOCHS", "10"))  # Keep at 10 (tuning used 5, but train more)
+    NUM_WORKERS = int(os.getenv("NUM_WORKERS", "2"))
 
 
 # Configure environment for MLflow S3 access
