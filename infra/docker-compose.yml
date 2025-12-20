@@ -13,7 +13,7 @@ services:
   # MLflow Tracking Server
   mlflow:
     build:
-      context: .
+      context: ..
       dockerfile: ./infra/mlflow/Dockerfile
     container_name: mlflow
     depends_on:
@@ -75,7 +75,7 @@ services:
   # Prefect Server
   prefect:
     build:
-      context: .
+      context: ..
       dockerfile: ./infra/prefect/Dockerfile
     container_name: prefect
     ports:
@@ -92,7 +92,7 @@ services:
   # Ray Head Node
   ray-head:
     build:
-      context: .
+      context: ..
       dockerfile: ./infra/ray/Dockerfile
     container_name: ray-head
     hostname: ray-head
@@ -129,7 +129,7 @@ services:
   # Ray Worker Nodes
   ray-worker:
     build:
-      context: .
+      context: ..
       dockerfile: ./infra/ray/Dockerfile
     depends_on:
       - ray-head

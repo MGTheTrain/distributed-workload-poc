@@ -40,71 +40,71 @@ test-inference-api: ## [Common] Test inference service API
 
 compose-start: ## [Compose] Start all services
 	@echo " Starting Ray cluster..."
-	@docker compose up -d
+	@docker compose -f infra/docker-compose.yml up -d
 	@echo " Waiting for services..."
 	@sleep 10
 	@echo " Services started"
 
 compose-stop: ## [Compose] Stop all services
-	@docker compose down
+	@docker compose -f infra/docker-compose.yml down
 
 compose-rebuild: ## [Compose] Rebuild all images
 	@echo "🔨 Rebuilding all images..."
-	@docker compose build
+	@docker compose -f infra/docker-compose.yml build
 	@echo " Rebuild complete"
 
 compose-logs: ## [Compose] Show logs
-	@docker compose logs -f
+	@docker compose -f infra/docker-compose.yml logs -f
 
 compose-clean: ## [Compose] Stop and remove everything
-	@docker compose down -v
+	@docker compose -f infra/docker-compose.yml down -v
 	@docker system prune -f
 
 # ETL Workloads
 
 compose-etl-ray: ## [Compose] Run ETL (dashboard logs)
 	@echo " Submitting ETL job..."
-	@docker compose exec ray-head ray job submit -- python /workspace/workloads/etl/ray_etl_pipeline.py
+	@docker compose -f infra/docker-compose.yml exec ray-head ray job submit -- python /workspace/workloads/etl/ray_etl_pipeline.py
 
 # ML Training Workloads
 
 compose-train-ray: ## [Compose] Run PyTorch training (dashboard logs)
 	@echo " Submitting training job..."
-	@docker compose exec ray-head ray job submit -- python /workspace/workloads/training/ray_train_pytorch.py
+	@docker compose -f infra/docker-compose.yml exec ray-head ray job submit -- python /workspace/workloads/training/ray_train_pytorch.py
 
 # ML Tuning Workloads
 
 compose-tune-ray: ## [Compose] Run hyperparameter tuning (dashboard logs)
 	@echo " Submitting tuning job..."
-	@docker compose exec ray-head ray job submit -- python /workspace/workloads/tuning/ray_tune_pytorch.py
+	@docker compose -f infra/docker-compose.yml exec ray-head ray job submit -- python /workspace/workloads/tuning/ray_tune_pytorch.py
 
 # ML Inference Workloads
 
 compose-serve-start-ray: ## [Compose] Deploy inference service
 	@echo " Deploying inference service..."
-	@docker compose exec ray-head bash -c "ray job submit -- bash -c 'cd /workspace/workloads/inference && serve deploy serve_config.yaml'"
+	@docker compose -f infra/docker-compose.yml exec ray-head bash -c "ray job submit -- bash -c 'cd /workspace/workloads/inference && serve deploy serve_config.yaml'"
 
 compose-serve-stop-ray: ## [Compose] Stop inference service
 	@echo " Stopping inference service..."
-	@docker compose exec ray-head serve shutdown --yes
+	@docker compose -f infra/docker-compose.yml exec ray-head serve shutdown --yes
 
 # Prefect Orchestrated Workloads
 
 compose-run-pipeline-prefect: ## [Compose] Run ML training pipeline (Prefect)
 	@echo " Running ML training pipeline via Prefect..."
-	@docker compose exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-pipeline
+	@docker compose -f infra/docker-compose.yml exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-pipeline
 
 compose-deploy-model-prefect: ## [Compose] Deploy model (Prefect)
 	@echo " Deploying model via Prefect..."
-	@docker compose exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-model
+	@docker compose -f infra/docker-compose.yml exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-model
 
 compose-run-etl-prefect: ## [Compose] Run ETL only (Prefect)
 	@echo " Running ETL via Prefect..."
-	@docker compose exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-etl
+	@docker compose -f infra/docker-compose.yml exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-etl
 
 compose-deploy-schedules-prefect: ## [Compose] Deploy Prefect schedules
 	@echo " Deploying Prefect schedules..."
-	@docker compose exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-schedules
+	@docker compose -f infra/docker-compose.yml exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-schedules
 
 # Kubernetes Targets
 
