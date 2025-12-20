@@ -1,18 +1,18 @@
 # Distributed Workload PoC
 
-![WIP](https://img.shields.io/badge/status-WIP-yellow)
+![Completed](https://img.shields.io/badge/status-completed-006400)
 
 **Scalable orchestration for distributed ETL, ML Training, Hyperparameter Tuning and ML Inference workloads**
 
 ## Overview
 
-PoC demonstrating distributed workload orchestration using **Ray** as the primary compute framework with **Prefect** for workflow orchestration, supporting traditional HPC environments (SLURM) and cloud-native deployments (Kubernetes). 
+PoC demonstrating distributed workload orchestration using **Ray** as the primary compute framework with **Prefect** for workflow orchestration, supporting cloud-native deployments (Kubernetes).
+
+> **NOTE:** This PoC focuses on local development (Docker Compose) and production-like testing (Kubernetes on Kind). For actual production deployments, **managed Kubernetes services** ([AWS EKS](https://aws.amazon.com/eks/), [GCP GKE](https://cloud.google.com/kubernetes-engine), [Azure AKS](https://azure.microsoft.com/en-us/products/kubernetes-service)) with Ray are recommended for their auto-scaling, reliability and operational simplicity. See [Deployment Comparison](./docs/deployment-comparison.md) for details.
 
 ## Quick Start
 
 Choose your deployment environment based on your needs:
-
----
 
 ### Local Development (Docker Compose)
 
@@ -35,7 +35,6 @@ make open-ray                   # Ray Dashboard (http://localhost:8265)
 make open-mlflow                # MLflow UI (http://localhost:5000)
 
 # 4. Stop and cleanup
-make compose-stop
 make compose-clean
 ```
 
@@ -59,11 +58,8 @@ make open-mlflow                # MLflow UI (http://localhost:5000)
 make compose-deploy-schedules-prefect  # Deploy daily/hourly schedules
 
 # 5. Stop and cleanup
-make compose-stop
 make compose-clean
 ```
-
----
 
 ### Production-like Environment (Kubernetes)
 
@@ -162,20 +158,58 @@ make k8s-clean
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                 Deployment Targets                          │
-│  ┌──────────────┐  ┌─────────────┐  ┌──────────────────┐    │
-│  │ Docker       │  │ Kubernetes  │  │  SLURM           │    │
-│  │ Compose      │  │ (Kind)      │  │  (HPC clusters)  │    │
-│  └──────────────┘  └─────────────┘  └──────────────────┘    │
+│  ┌──────────────┐  ┌─────────────┐                          │
+│  │ Docker       │  │ Kubernetes  │                          │
+│  │ Compose      │  │ (Kind/EKS/  │                          │
+│  │ (Local Dev)  │  │ GKE/AKS)    │                          │
+│  └──────────────┘  └─────────────┘                          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## Deployment Options
 
-| Environment | Use Case | Command |
-|------------|----------|---------|
-| **Docker Compose** | Local dev, testing | `make compose-start` |
-| **Kubernetes (Kind)** | Production-like testing | `make k8s-deploy` |
-| **SLURM** | Traditional HPC clusters | `sbatch orchestration/slurm/ray_on_slurm.sh` |
+| Environment | Use Case | Command | Production Ready |
+|------------|----------|---------|------------------|
+| **Docker Compose** | Local dev, testing | `make compose-start` | ❌ No |
+| **Kubernetes (Kind)** | Production-like testing | `make k8s-deploy` | ⚠️ Testing only |
+| **Managed Kubernetes** | Production workloads | See [Deployment comparison](./docs/deployment-comparison.md) | ✅ **Recommended** |
+
+### Production Deployment
+
+For production workloads, use **managed Kubernetes services** with [KubeRay Operator](https://docs.ray.io/en/latest/cluster/kubernetes/index.html):
+
+- **AWS:** [Amazon EKS](https://aws.amazon.com/eks/)
+- **GCP:** [Google GKE](https://cloud.google.com/kubernetes-engine)
+- **Azure:** [Azure AKS](https://azure.microsoft.com/en-us/products/kubernetes-service)
+
+**Advantages:**
+- Auto-scaling (nodes + pods)
+- Self-healing & high availability
+- Managed control plane
+- Production-grade observability
+
+See [Deployment Comparison](./docs/deployment-comparison.md) for detailed guidance.
+
+## Future Enhancements
+
+### Out of Scope (Future Work)
+
+The following deployment patterns are **not covered** in this PoC but are valid production options:
+
+#### Ray on HPC Clusters (SLURM)
+- **Use case:** Maximum throughput for large-scale LLM pretraining
+- **Pattern:** Ray's [`symmetric-run`](https://docs.ray.io/en/latest/cluster/vms/user-guides/community/slurm.html) command on SLURM
+- **Network:** InfiniBand for multi-node GPU training
+- **Reference:** See [`scripts/ray_on_slurm.sh`](./scripts/ray_on_slurm.sh) (example only)
+
+#### Ray on Virtual Machines
+- **Use case:** Fixed-size workloads, maximum flexibility
+- **Pattern:** [Ray on VMs](https://docs.ray.io/en/latest/cluster/vms/index.html) with Terraform/Ansible/Puppet/Chef
+- **Tradeoff:** Manual scaling vs K8s auto-scaling
+
+For more details, see:
+- [HPC vs Kubernetes Workflows](./docs/hpc-vs-kubernetes.md)
+- [Deployment Comparison](./docs/deployment-comparison.md)
 
 ## Available Commands
 ```bash
