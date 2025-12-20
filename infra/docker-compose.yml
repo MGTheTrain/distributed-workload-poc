@@ -72,6 +72,23 @@ services:
     networks:
       - distributed-workload-network
 
+  # Init container to fix volume permissions
+  ray-data-init:
+    image: busybox:1.36
+    container_name: ray-data-init
+    command:
+      - sh
+      - -c
+      - |
+        echo "Fixing /workspace/data permissions..."
+        chown -R 1000:100 /workspace/data
+        chmod -R 775 /workspace/data
+        echo "Permissions fixed!"
+    volumes:
+      - ray-data:/workspace/data
+    networks:
+      - distributed-workload-network
+
   # Prefect Server
   prefect:
     build:
