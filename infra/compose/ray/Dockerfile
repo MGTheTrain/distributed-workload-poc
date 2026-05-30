@@ -2,12 +2,8 @@ FROM rayproject/ray:2.51.1-py312
 
 WORKDIR /workspace
 
-COPY ./workloads/etl ./workloads/etl
-COPY ./workloads/tuning ./workloads/tuning
-COPY ./workloads/training ./workloads/training
-COPY ./workloads/inference ./workloads/inference
-
 RUN pip install \
+    --no-cache-dir \
     pandas==2.3.3 \
     numpy==1.26.4 \
     torch==2.9.1 \

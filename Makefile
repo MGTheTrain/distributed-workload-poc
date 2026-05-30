@@ -1,10 +1,9 @@
-.PHONY: help compose-start compose-stop compose-rebuild compose-logs compose-clean \
-        compose-etl-ray compose-train-ray compose-tune-ray \
-        compose-serve-start-ray test-inference-api compose-serve-stop-ray \
-		compose-run-pipeline-prefect compose-deploy-model-prefect compose-run-etl-prefect \
-		compose-deploy-schedules-prefect open-ray open-mlflow k8s-deploy k8s-clean k8s-forward \
-		k8s-etl-ray k8s-train-ray k8s-tune-ray k8s-serve-start-ray k8s-serve-stop-ray \ 
-		k8s-run-pipeline-prefect k8s-deploy-model-prefect k8s-run-etl-prefect k8s-deploy-schedules-prefect
+# Distributed Workload PoC — developer commands
+
+export PROJECT_ROOT   ?= $(CURDIR)
+
+COMPOSE_FILE ?= infra/compose/docker-compose.yml
+COMPOSE      := docker compose -f $(COMPOSE_FILE)
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -26,7 +25,7 @@ open-ray: ## [Common] Open Ray Dashboard
 
 open-mlflow: ## [Common] Open MLflow Dashboard
 	@echo " Opening MLflow Dashboard..."
-	@open http://localhost:5000 2>/dev/null || xdg-open http://localhost:5000 2>/dev/null || echo "Open http://localhost:5000"
+	@open http://localhost:5001 2>/dev/null || xdg-open http://localhost:5001 2>/dev/null || echo "Open http://localhost:5001"
 
 open-prefect: ## [Common] Open Prefect Dashboard
 	@echo " Opening Prefect Dashboard..."
@@ -39,72 +38,70 @@ test-inference-api: ## [Common] Test inference service API
 # Docker Compose Targets
 
 compose-start: ## [Compose] Start all services
-	@echo " Starting Ray cluster..."
-	@docker compose -f infra/docker-compose.yml up -d
-	@echo " Waiting for services..."
-	@sleep 10
-	@echo " Services started"
+	@$(COMPOSE) up -d
 
 compose-stop: ## [Compose] Stop all services
-	@docker compose -f infra/docker-compose.yml down
+	@$(COMPOSE) down
+
+compose-restart: compose-stop compose-start ## [Compose] Restart all services
 
 compose-rebuild: ## [Compose] Rebuild all images
 	@echo "🔨 Rebuilding all images..."
-	@docker compose -f infra/docker-compose.yml build
+	@$(COMPOSE) build
 	@echo " Rebuild complete"
 
 compose-logs: ## [Compose] Show logs
-	@docker compose -f infra/docker-compose.yml logs -f
+	@$(COMPOSE) logs -f
 
 compose-clean: ## [Compose] Stop and remove everything
-	@docker compose -f infra/docker-compose.yml down -v
+	@$(COMPOSE) down -v
 	@docker system prune -f
 
 # ETL Workloads
 
 compose-etl-ray: ## [Compose] Run ETL (dashboard logs)
 	@echo " Submitting ETL job..."
-	@docker compose -f infra/docker-compose.yml exec ray-head ray job submit -- python /workspace/workloads/etl/ray_etl_pipeline.py
+	@$(COMPOSE) exec ray-head ray job submit -- python /workspace/workloads/etl/ray_etl_pipeline.py
 
 # ML Training Workloads
 
 compose-train-ray: ## [Compose] Run PyTorch training (dashboard logs)
 	@echo " Submitting training job..."
-	@docker compose -f infra/docker-compose.yml exec ray-head ray job submit -- python /workspace/workloads/training/ray_train_pytorch.py
+	@$(COMPOSE) exec ray-head ray job submit -- python /workspace/workloads/training/ray_train_pytorch.py
 
 # ML Tuning Workloads
 
 compose-tune-ray: ## [Compose] Run hyperparameter tuning (dashboard logs)
 	@echo " Submitting tuning job..."
-	@docker compose -f infra/docker-compose.yml exec ray-head ray job submit -- python /workspace/workloads/tuning/ray_tune_pytorch.py
+	@$(COMPOSE) exec ray-head ray job submit -- python /workspace/workloads/tuning/ray_tune_pytorch.py
 
 # ML Inference Workloads
 
 compose-serve-start-ray: ## [Compose] Deploy inference service
 	@echo " Deploying inference service..."
-	@docker compose -f infra/docker-compose.yml exec ray-head bash -c "ray job submit -- bash -c 'cd /workspace/workloads/inference && serve deploy serve_config.yaml'"
+	@$(COMPOSE) exec ray-head bash -c "ray job submit -- bash -c 'cd /workspace/workloads/inference && serve deploy serve_config.yaml'"
 
 compose-serve-stop-ray: ## [Compose] Stop inference service
 	@echo " Stopping inference service..."
-	@docker compose -f infra/docker-compose.yml exec ray-head serve shutdown --yes
+	@$(COMPOSE) exec ray-head serve shutdown --yes
 
 # Prefect Orchestrated Workloads
 
 compose-run-pipeline-prefect: ## [Compose] Run ML training pipeline (Prefect)
 	@echo " Running ML training pipeline via Prefect..."
-	@docker compose -f infra/docker-compose.yml exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-pipeline
+	@$(COMPOSE) exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-pipeline
 
 compose-deploy-model-prefect: ## [Compose] Deploy model (Prefect)
 	@echo " Deploying model via Prefect..."
-	@docker compose -f infra/docker-compose.yml exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-model
+	@$(COMPOSE) exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-model
 
 compose-run-etl-prefect: ## [Compose] Run ETL only (Prefect)
 	@echo " Running ETL via Prefect..."
-	@docker compose -f infra/docker-compose.yml exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-etl
+	@$(COMPOSE) exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-etl
 
 compose-deploy-schedules-prefect: ## [Compose] Deploy Prefect schedules
 	@echo " Deploying Prefect schedules..."
-	@docker compose -f infra/docker-compose.yml exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-schedules
+	@$(COMPOSE) exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-schedules
 
 # Kubernetes Targets
 

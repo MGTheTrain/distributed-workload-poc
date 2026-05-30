@@ -20,7 +20,10 @@
     "8265": {"label": "Ray Dashboard"},
     "10001": {"label": "Ray Client"},
     "8000": {"label": "Ray Serve"},
-    "5000": {"label": "MLflow Tracking Server"},
+    "5001": {"label": "MLflow Tracking Server"},
     "4200": {"label": "Prefect Dashboard"}
+  },
+  "remoteEnv": {
+    "PROJECT_ROOT": "${localWorkspaceFolder}"
   }
 }

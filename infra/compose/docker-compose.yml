@@ -13,8 +13,8 @@ services:
   # MLflow Tracking Server
   mlflow:
     build:
-      context: ..
-      dockerfile: ./infra/mlflow/Dockerfile
+      context: ${PROJECT_ROOT}/infra/compose/mlflow
+      dockerfile: Dockerfile
     container_name: mlflow
     depends_on:
       postgres:
@@ -24,7 +24,7 @@ services:
       create-bucket:
         condition: service_completed_successfully
     ports:
-      - "5000:5000"
+      - "5001:5000"
     environment:
       - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow@postgres:5432/mlflow
       - MLFLOW_DEFAULT_ARTIFACT_ROOT=s3://mlflow-artifacts/
@@ -92,9 +92,11 @@ services:
   # Prefect Server
   prefect:
     build:
-      context: ..
-      dockerfile: ./infra/prefect/Dockerfile
+      context: ${PROJECT_ROOT}/infra/compose/prefect
+      dockerfile: Dockerfile
     container_name: prefect
+    volumes:
+      - ${PROJECT_ROOT}/workloads/orchestration:/workspace/workloads/orchestration:ro
     ports:
       - "4200:4200"
     command: >
@@ -109,8 +111,8 @@ services:
   # Ray Head Node
   ray-head:
     build:
-      context: ..
-      dockerfile: ./infra/ray/Dockerfile
+      context: ${PROJECT_ROOT}/infra/compose/ray
+      dockerfile: Dockerfile
     container_name: ray-head
     hostname: ray-head
     ports:
@@ -138,6 +140,10 @@ services:
       - MLFLOW_S3_ENDPOINT_URL=http://localstack:4566
     volumes:
       - ray-data:/workspace/data
+      - ${PROJECT_ROOT}/workloads/etl:/workspace/workloads/etl:ro
+      - ${PROJECT_ROOT}/workloads/tuning:/workspace/workloads/tuning:ro
+      - ${PROJECT_ROOT}/workloads/training:/workspace/workloads/training:ro
+      - ${PROJECT_ROOT}/workloads/inference:/workspace/workloads/inference:ro
     networks:
       - distributed-workload-network
     depends_on:
@@ -146,8 +152,8 @@ services:
   # Ray Worker Nodes
   ray-worker:
     build:
-      context: ..
-      dockerfile: ./infra/ray/Dockerfile
+      context: ${PROJECT_ROOT}/infra/compose/ray
+      dockerfile: Dockerfile
     depends_on:
       - ray-head
     deploy:

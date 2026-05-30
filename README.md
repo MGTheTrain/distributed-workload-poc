@@ -32,7 +32,7 @@ make test-inference-api         # Test inference service API
 
 # 3. View dashboards
 make open-ray                   # Ray Dashboard (http://localhost:8265)
-make open-mlflow                # MLflow UI (http://localhost:5000)
+make open-mlflow                # MLflow UI (http://localhost:5001)
 
 # 4. Stop and cleanup
 make compose-clean
@@ -52,7 +52,7 @@ make test-inference-api             # Test inference service API
 # 3. View dashboards
 make open-prefect               # Prefect UI (http://localhost:4200)
 make open-ray                   # Ray Dashboard (http://localhost:8265)
-make open-mlflow                # MLflow UI (http://localhost:5000)
+make open-mlflow                # MLflow UI (http://localhost:5001)
 
 # 4. Schedule workflows (optional)
 make compose-deploy-schedules-prefect  # Deploy daily/hourly schedules
@@ -82,7 +82,7 @@ make test-inference-api         # Test inference service API
 
 # 4. View dashboards
 make open-ray                   # Ray Dashboard (http://localhost:8265)
-make open-mlflow                # MLflow UI (http://localhost:5000)
+make open-mlflow                # MLflow UI (http://localhost:5001)
 
 # 5. Cleanup
 make k8s-clean
@@ -105,7 +105,7 @@ make test-inference-api         # Test inference service API
 # 4. View dashboards
 make open-prefect               # Prefect UI (http://localhost:4200)
 make open-ray                   # Ray Dashboard (http://localhost:8265)
-make open-mlflow                # MLflow UI (http://localhost:5000)
+make open-mlflow                # MLflow UI (http://localhost:5001)
 
 # 5. Schedule workflows (optional)
 make k8s-deploy-schedules-prefect  # Deploy daily/hourly schedules
