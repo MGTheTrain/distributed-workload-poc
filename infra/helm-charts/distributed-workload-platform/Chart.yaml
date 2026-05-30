@@ -1,0 +1,26 @@
+apiVersion: v2
+name: distributed-workload-platform
+description: |
+  Platform components for the distributed workload PoC — PostgreSQL,
+  MLflow, Prefect, LocalStack (S3 emulation), and a Ray cluster on
+  KubeRay. Raw templates for the custom-image components; community
+  subcharts for LocalStack and Ray.
+type: application
+version: 0.1.0
+appVersion: "1.0"
+
+dependencies:
+  - name: localstack
+    version: "0.6.27"
+    repository: https://localstack.github.io/helm-charts
+    condition: localstack.enabled
+
+  - name: kuberay-operator
+    version: "1.2.2"
+    repository: https://ray-project.github.io/kuberay-helm/
+    condition: kuberay-operator.enabled
+
+  - name: ray-cluster
+    version: "1.2.2"
+    repository: https://ray-project.github.io/kuberay-helm/
+    condition: ray-cluster.enabled

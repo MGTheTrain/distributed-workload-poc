@@ -1,0 +1,17 @@
+{{- if .Values.prefect.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: prefect-server
+  labels:
+    {{- include "distributed-workload-platform.labels" . | nindent 4 }}
+    app: prefect-server
+spec:
+  type: ClusterIP
+  selector:
+    app: prefect-server
+  ports:
+    - name: http
+      port: {{ .Values.prefect.port }}
+      targetPort: http
+{{- end }}

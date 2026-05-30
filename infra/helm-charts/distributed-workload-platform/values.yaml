@@ -1,0 +1,173 @@
+# PostgreSQL — backing store for MLflow (and Prefect, if you migrate
+# off SQLite). PoC-grade: emptyDir storage, single replica.
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "15-alpine"
+    pullPolicy: IfNotPresent
+  auth:
+    username: mlflow
+    password: mlflow
+    defaultDatabase: mlflow
+  # Extra databases created by the init script.
+  initDatabases:
+    - mlflow
+    - prefect
+  port: 5432
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# MLflow tracking server, custom image with the PostgreSQL + S3 wiring.
+mlflow:
+  enabled: true
+  image:
+    repository: mgthetrain987/distributed-workload-poc-mlflow
+    tag: latest
+    pullPolicy: IfNotPresent
+  port: 5000
+  # Connection strings interpolated into the deployment template.
+  backendStoreUri: "postgresql://mlflow:mlflow@postgres:5432/mlflow"
+  artifactRoot: "s3://mlflow-artifacts/"
+  s3Endpoint: "http://localstack:4566"
+  aws:
+    accessKeyId: test
+    secretAccessKey: test
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Prefect orchestrator, also a custom image.
+prefect:
+  enabled: true
+  image:
+    repository: mgthetrain987/distributed-workload-poc-prefect
+    tag: latest
+    pullPolicy: IfNotPresent
+  port: 4200
+  rayAddress: "ray://ray-cluster-kuberay-head-svc:10001"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Shared PVC consumed by Ray head + workers (mounted at /workspace/data).
+rayData:
+  enabled: true
+  storage: 10Gi
+  hostPath: /tmp/ray-data
+  accessModes:
+    - ReadWriteMany
+
+# LocalStack subchart — S3 emulation only.
+localstack:
+  enabled: true
+  fullnameOverride: localstack
+  service:
+    type: ClusterIP
+  startServices: s3
+  extraEnvVars:
+    - name: AWS_ACCESS_KEY_ID
+      value: test
+    - name: AWS_SECRET_ACCESS_KEY
+      value: test
+  persistence:
+    enabled: false
+
+# KubeRay operator subchart — provisions the RayCluster CRD controllers.
+kuberay-operator:
+  enabled: true
+  fullnameOverride: kuberay-operator
+
+# Ray cluster subchart — custom image, env vars match the compose stack.
+ray-cluster:
+  enabled: true
+  fullnameOverride: ray-cluster
+  image:
+    repository: mgthetrain987/distributed-workload-poc-ray
+    tag: latest
+    pullPolicy: IfNotPresent
+  head:
+    initContainers:
+      - name: fix-permissions
+        image: busybox:1.36
+        command: ["sh", "-c", "chown -R 1000:100 /workspace/data && chmod -R 775 /workspace/data"]
+        volumeMounts:
+          - name: ray-data
+            mountPath: /workspace/data
+        securityContext:
+          runAsUser: 0
+    rayStartParams:
+      dashboard-host: "0.0.0.0"
+      num-cpus: "10"
+    resources:
+      requests:
+        cpu: 2
+        memory: 4Gi
+      limits:
+        cpu: 4
+        memory: 8Gi
+    volumes:
+      - name: ray-data
+        persistentVolumeClaim:
+          claimName: ray-shared-data
+    volumeMounts:
+      - name: ray-data
+        mountPath: /workspace/data
+    containerEnv:
+      - { name: RAY_ADDRESS,            value: "ray://ray-cluster-kuberay-head-svc:10001" }
+      - { name: MLFLOW_TRACKING_URI,    value: "http://mlflow:5000" }
+      - { name: AWS_ACCESS_KEY_ID,      value: "test" }
+      - { name: AWS_SECRET_ACCESS_KEY,  value: "test" }
+      - { name: AWS_DEFAULT_REGION,     value: "us-east-1" }
+      - { name: AWS_S3_ENDPOINT_URL,    value: "http://localstack:4566" }
+      - { name: MLFLOW_S3_ENDPOINT_URL, value: "http://localstack:4566" }
+      - { name: DATA_DIR,               value: "/workspace/data" }
+  worker:
+    initContainers:
+      - name: fix-permissions
+        image: busybox:1.36
+        command: ["sh", "-c", "chown -R 1000:100 /workspace/data && chmod -R 775 /workspace/data"]
+        volumeMounts:
+          - name: ray-data
+            mountPath: /workspace/data
+        securityContext:
+          runAsUser: 0
+    replicas: 2
+    rayStartParams:
+      num-cpus: "5"
+    resources:
+      requests:
+        cpu: 1
+        memory: 2Gi
+      limits:
+        cpu: 2
+        memory: 4Gi
+    volumes:
+      - name: ray-data
+        persistentVolumeClaim:
+          claimName: ray-shared-data
+    volumeMounts:
+      - name: ray-data
+        mountPath: /workspace/data
+    containerEnv:
+      - { name: RAY_ADDRESS,            value: "ray://ray-cluster-kuberay-head-svc:10001" }
+      - { name: MLFLOW_TRACKING_URI,    value: "http://mlflow:5000" }
+      - { name: AWS_ACCESS_KEY_ID,      value: "test" }
+      - { name: AWS_SECRET_ACCESS_KEY,  value: "test" }
+      - { name: AWS_DEFAULT_REGION,     value: "us-east-1" }
+      - { name: AWS_S3_ENDPOINT_URL,    value: "http://localstack:4566" }
+      - { name: MLFLOW_S3_ENDPOINT_URL, value: "http://localstack:4566" }
+      - { name: DATA_DIR,               value: "/workspace/data" }

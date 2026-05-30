@@ -1,0 +1,33 @@
+{{- if .Values.rayData.enabled }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ray-shared-data
+  labels:
+    {{- include "distributed-workload-platform.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: {{ .Values.rayData.storage }}
+  accessModes:
+    {{- toYaml .Values.rayData.accessModes | nindent 4 }}
+  storageClassName: ""
+  hostPath:
+    path: {{ .Values.rayData.hostPath }}
+    type: DirectoryOrCreate
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ray-shared-data
+  labels:
+    {{- include "distributed-workload-platform.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.rayData.accessModes | nindent 4 }}
+  storageClassName: ""
+  volumeName: ray-shared-data
+  resources:
+    requests:
+      storage: {{ .Values.rayData.storage }}
+{{- end }}

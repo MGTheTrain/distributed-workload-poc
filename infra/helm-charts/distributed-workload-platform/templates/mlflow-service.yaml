@@ -1,0 +1,17 @@
+{{- if .Values.mlflow.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow
+  labels:
+    {{- include "distributed-workload-platform.labels" . | nindent 4 }}
+    app: mlflow
+spec:
+  type: ClusterIP
+  selector:
+    app: mlflow
+  ports:
+    - name: http
+      port: {{ .Values.mlflow.port }}
+      targetPort: http
+{{- end }}
