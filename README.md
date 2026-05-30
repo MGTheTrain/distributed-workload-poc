@@ -1,7 +1,5 @@
 # Distributed Workload PoC
 
-![Completed](https://img.shields.io/badge/status-completed-006400)
-
 **Scalable orchestration for distributed ETL, ML Training, Hyperparameter Tuning and ML Inference workloads**
 
 ## Overview
