@@ -66,7 +66,7 @@ test-inference-api: ## Test inference API
 
 start: ## Start platform
 ifeq ($(RUNTIME),compose)
-	@$(COMPOSE) up -d
+	@$(COMPOSE) up -d --build
 else
 	@bash scripts/deploy-to-kind.sh
 endif
