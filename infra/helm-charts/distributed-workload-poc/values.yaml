@@ -1,27 +1,31 @@
 # PostgreSQL — backing store for MLflow (and Prefect, if you migrate
 # off SQLite). PoC-grade: emptyDir storage, single replica.
+# values.yaml — replaces the entire current postgres: block
 postgres:
   enabled: true
-  image:
-    repository: postgres
-    tag: "15-alpine"
-    pullPolicy: IfNotPresent
+  fullnameOverride: postgres   # ensures Service is "postgres", matching MLflow's connection string
   auth:
     username: mlflow
     password: mlflow
-    defaultDatabase: mlflow
-  # Extra databases created by the init script.
-  initDatabases:
-    - mlflow
-    - prefect
-  port: 5432
-  resources:
-    requests:
-      cpu: 250m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
+    database: mlflow
+  primary:
+    persistence:
+      enabled: false
+    initdb:
+      scripts:
+        00-init.sql: |
+          CREATE DATABASE prefect;
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  readReplicas:
+    replicaCount: 0
+  metrics:
+    enabled: false
 
 # MLflow tracking server, custom image with the PostgreSQL + S3 wiring.
 mlflow:
@@ -54,7 +58,7 @@ prefect:
     tag: latest
     pullPolicy: IfNotPresent
   port: 4200
-  rayAddress: "ray://ray-cluster-kuberay-head-svc:10001"
+  rayAddress: "ray://ray-cluster-head-svc:10001"
   resources:
     requests:
       cpu: 500m
@@ -75,6 +79,9 @@ rayData:
 localstack:
   enabled: true
   fullnameOverride: localstack
+  image:
+    repository: localstack/localstack
+    tag: "4.9.0"
   service:
     type: ClusterIP
   startServices: s3
@@ -100,6 +107,10 @@ ray-cluster:
     tag: latest
     pullPolicy: IfNotPresent
   head:
+    readinessProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      failureThreshold: 5
     initContainers:
       - name: fix-permissions
         image: busybox:1.36
@@ -121,13 +132,23 @@ ray-cluster:
         memory: 8Gi
     volumes:
       - name: ray-data
-        persistentVolumeClaim:
-          claimName: ray-shared-data
+        persistentVolumeClaim: { claimName: ray-shared-data }
+      - name: workloads-etl
+        configMap: { name: workloads-etl }
+      - name: workloads-training
+        configMap: { name: workloads-training }
+      - name: workloads-tuning
+        configMap: { name: workloads-tuning }
+      - name: workloads-inference
+        configMap: { name: workloads-inference }
     volumeMounts:
-      - name: ray-data
-        mountPath: /workspace/data
+      - { name: ray-data,            mountPath: /workspace/data }
+      - { name: workloads-etl,       mountPath: /workspace/workloads/etl }
+      - { name: workloads-training,  mountPath: /workspace/workloads/training }
+      - { name: workloads-tuning,    mountPath: /workspace/workloads/tuning }
+      - { name: workloads-inference, mountPath: /workspace/workloads/inference }
     containerEnv:
-      - { name: RAY_ADDRESS,            value: "ray://ray-cluster-kuberay-head-svc:10001" }
+      - { name: RAY_ADDRESS,            value: "ray://ray-cluster-head-svc:10001" }
       - { name: MLFLOW_TRACKING_URI,    value: "http://mlflow:5000" }
       - { name: AWS_ACCESS_KEY_ID,      value: "test" }
       - { name: AWS_SECRET_ACCESS_KEY,  value: "test" }
@@ -147,14 +168,14 @@ ray-cluster:
           runAsUser: 0
     replicas: 2
     rayStartParams:
-      num-cpus: "5"
+      num-cpus: "1"
     resources:
       requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
         cpu: 1
         memory: 2Gi
-      limits:
-        cpu: 2
-        memory: 4Gi
     volumes:
       - name: ray-data
         persistentVolumeClaim:
@@ -163,7 +184,7 @@ ray-cluster:
       - name: ray-data
         mountPath: /workspace/data
     containerEnv:
-      - { name: RAY_ADDRESS,            value: "ray://ray-cluster-kuberay-head-svc:10001" }
+      - { name: RAY_ADDRESS,            value: "ray://ray-cluster-head-svc:10001" }
       - { name: MLFLOW_TRACKING_URI,    value: "http://mlflow:5000" }
       - { name: AWS_ACCESS_KEY_ID,      value: "test" }
       - { name: AWS_SECRET_ACCESS_KEY,  value: "test" }

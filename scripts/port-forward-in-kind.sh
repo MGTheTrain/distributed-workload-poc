@@ -39,7 +39,7 @@ echo "  MLflow UI:      http://localhost:5001"
 echo "  Prefect UI:     http://localhost:4200"
 echo ""
 
-kubectl port-forward -n ml-stack svc/ray-cluster-kuberay-head-svc 8265:8265 &
+kubectl port-forward -n ml-stack svc/ray-cluster-head-svc 8265:8265 &
 kubectl port-forward -n ml-stack svc/mlflow 5001:5000 &
 kubectl port-forward -n ml-stack svc/prefect-server 4200:4200 &
 

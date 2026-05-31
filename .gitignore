@@ -34,3 +34,5 @@ Thumbs.db
 *.log
 
 combined.txt
+*.tgz
+infra/helm-charts/distributed-workload-poc/files/

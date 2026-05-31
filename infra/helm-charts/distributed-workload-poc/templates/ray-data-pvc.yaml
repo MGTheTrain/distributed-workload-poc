@@ -4,7 +4,7 @@ kind: PersistentVolume
 metadata:
   name: ray-shared-data
   labels:
-    {{- include "distributed-workload-platform.labels" . | nindent 4 }}
+    {{- include "distributed-workload-poc.labels" . | nindent 4 }}
 spec:
   capacity:
     storage: {{ .Values.rayData.storage }}
@@ -21,7 +21,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: ray-shared-data
   labels:
-    {{- include "distributed-workload-platform.labels" . | nindent 4 }}
+    {{- include "distributed-workload-poc.labels" . | nindent 4 }}
 spec:
   accessModes:
     {{- toYaml .Values.rayData.accessModes | nindent 4 }}

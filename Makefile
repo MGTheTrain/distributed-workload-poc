@@ -5,6 +5,9 @@ export PROJECT_ROOT   ?= $(CURDIR)
 COMPOSE_FILE ?= infra/compose/docker-compose.yml
 COMPOSE      := docker compose -f $(COMPOSE_FILE)
 
+RAY_HEAD_POD = $$(kubectl get pod -n ml-stack -l ray.io/node-type=head -o name | head -1)
+PREFECT_POD = $$(kubectl get pod -n ml-stack -l app=prefect-server -o name | head -1)
+
 help: ## Show this help message
 	@echo 'Usage: make [target]'
 	@echo ''
@@ -113,6 +116,10 @@ k8s-clean: ## [K8s] Cleanup Kind cluster
 	@echo " Cleaning up Kind cluster..."
 	@bash scripts/cleanup-kind.sh
 
+k8s-redeploy: ## [K8s] Uninstall + install (full reset) PoC k8s resources on the kind cluster
+	@bash scripts/cleanup-kind.sh
+	@bash scripts/deploy-to-kind.sh
+
 k8s-forward: ## [K8s] Port-forward dashboards
 	@echo " Port-forwarding services..."
 	@bash scripts/port-forward-in-kind.sh
@@ -121,24 +128,24 @@ k8s-forward: ## [K8s] Port-forward dashboards
 
 k8s-etl-ray: ## [K8s] Run ETL on K8s
 	@echo " Submitting ETL on Kubernetes..."
-	@kubectl exec -n ml-stack $$(kubectl get pod -n ml-stack -l ray.io/node-type=head -o name | head -1) -- \
+	@kubectl exec -n ml-stack $(RAY_HEAD_POD) -- \
 		bash -c "ray job submit -- python /workspace/workloads/etl/ray_etl_pipeline.py"
 
 k8s-train-ray: ## [K8s] Run PyTorch training on K8s
 	@echo " Submitting training job on Kubernetes..."
-	@kubectl exec -n ml-stack $$(kubectl get pod -n ml-stack -l ray.io/node-type=head -o name | head -1) -- \
+	@kubectl exec -n ml-stack $(RAY_HEAD_POD) -- \
 		bash -c "ray job submit -- python /workspace/workloads/training/ray_train_pytorch.py"
 
 k8s-tune-ray: ## [K8s] Run hyperparameter tuning on K8s
 	@echo " Submitting tuning job on Kubernetes..."
-	@kubectl exec -n ml-stack $$(kubectl get pod -n ml-stack -l ray.io/node-type=head -o name | head -1) -- \
+	@kubectl exec -n ml-stack $(RAY_HEAD_POD) -- \
 		bash -c "ray job submit -- python /workspace/workloads/tuning/ray_tune_pytorch.py"
 
 # ML Inference Workloads on K8s
 
 k8s-serve-start-ray: ## [K8s] Deploy inference service on K8s
 	@echo " Deploying inference service..."
-	@kubectl exec -n ml-stack $$(kubectl get pod -n ml-stack -l ray.io/node-type=head -o name | head -1) -- \
+	@kubectl exec -n ml-stack $(RAY_HEAD_POD) -- \
 		bash -c "cd /workspace/workloads/inference && serve deploy serve_config.yaml"
 	@echo ""
 	@echo " Inference service deployed!"
@@ -148,23 +155,23 @@ k8s-serve-start-ray: ## [K8s] Deploy inference service on K8s
 	@echo "   Test endpoint: http://localhost:8000"
 	@echo "   Test inference API: make test-inference-api"
 	@echo ""
-	@kubectl port-forward -n ml-stack svc/ray-cluster-kuberay-head-svc 8000:8000
+	@kubectl port-forward -n ml-stack svc/ray-cluster-head-svc 8000:8000
 
 k8s-serve-stop-ray: ## [K8s] Stop inference service on K8s
 	@echo " Stopping inference service..."
-	@kubectl exec -n ml-stack $$(kubectl get pod -n ml-stack -l ray.io/node-type=head -o name | head -1) -- \
+	@kubectl exec -n ml-stack $(RAY_HEAD_POD) -- \
 		bash -c "serve shutdown --yes"
 
 # Prefect Orchestrated Workloads on K8s
 
 k8s-run-pipeline-prefect: ## [K8s] Run ML pipeline via Prefect on K8s
 	@echo " Running ML pipeline via Prefect on Kubernetes..."
-	@kubectl exec -n ml-stack $$(kubectl get pod -n ml-stack -l app=prefect-server -o name | head -1) -- \
+	@kubectl exec -n ml-stack $(PREFECT_POD) -- \
 		bash -c "python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-pipeline"
 
 k8s-deploy-model-prefect: ## [K8s] Deploy model via Prefect on K8s
 	@echo " Deploying model via Prefect on Kubernetes..."
-	@kubectl exec -n ml-stack $$(kubectl get pod -n ml-stack -l app=prefect-server -o name | head -1) -- \
+	@kubectl exec -n ml-stack $(PREFECT_POD) -- \
 		bash -c "python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-model"
 	@echo ""
 	@echo " Inference service deployed!"
@@ -174,14 +181,14 @@ k8s-deploy-model-prefect: ## [K8s] Deploy model via Prefect on K8s
 	@echo "   Test endpoint: http://localhost:8000"
 	@echo "   Test inference API: make test-inference-api"
 	@echo ""
-	@kubectl port-forward -n ml-stack svc/ray-cluster-kuberay-head-svc 8000:8000
+	@kubectl port-forward -n ml-stack svc/ray-cluster-head-svc 8000:8000
 
 k8s-run-etl-prefect: ## [K8s] Run ETL only via Prefect on K8s
 	@echo " Running ETL via Prefect on Kubernetes..."
-	@kubectl exec -n ml-stack $$(kubectl get pod -n ml-stack -l app=prefect-server -o name | head -1) -- \
+	@kubectl exec -n ml-stack $(PREFECT_POD) -- \
 		bash -c "python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-etl"
 
 k8s-deploy-schedules-prefect: ## [K8s] Deploy Prefect schedules on K8s
 	@echo " Deploying Prefect schedules on Kubernetes..."
-	@kubectl exec -n ml-stack $$(kubectl get pod -n ml-stack -l app=prefect-server -o name | head -1) -- \
+	@kubectl exec -n ml-stack $(PREFECT_POD) -- \
 		bash -c "python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-schedules"

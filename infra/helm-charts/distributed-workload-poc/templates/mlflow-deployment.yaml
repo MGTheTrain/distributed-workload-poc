@@ -4,7 +4,7 @@ kind: Deployment
 metadata:
   name: mlflow
   labels:
-    {{- include "distributed-workload-platform.labels" . | nindent 4 }}
+    {{- include "distributed-workload-poc.labels" . | nindent 4 }}
     app: mlflow
 spec:
   replicas: 1
@@ -15,7 +15,7 @@ spec:
     metadata:
       labels:
         app: mlflow
-        {{- include "distributed-workload-platform.labels" . | nindent 8 }}
+        {{- include "distributed-workload-poc.labels" . | nindent 8 }}
     spec:
       containers:
         - name: mlflow

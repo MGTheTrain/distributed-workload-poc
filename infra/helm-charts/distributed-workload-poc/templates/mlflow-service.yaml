@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: mlflow
   labels:
-    {{- include "distributed-workload-platform.labels" . | nindent 4 }}
+    {{- include "distributed-workload-poc.labels" . | nindent 4 }}
     app: mlflow
 spec:
   type: ClusterIP

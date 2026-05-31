@@ -1,0 +1,15 @@
+dependencies:
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: 18.3.0
+- name: localstack
+  repository: https://localstack.github.io/helm-charts
+  version: 0.6.27
+- name: kuberay-operator
+  repository: https://ray-project.github.io/kuberay-helm/
+  version: 1.2.2
+- name: ray-cluster
+  repository: https://ray-project.github.io/kuberay-helm/
+  version: 1.2.2
+digest: sha256:61435886bedd14976834235468d7ef046cc858671a787d10d69b8437c6b1389c
+generated: "2026-05-31T11:17:56.985709129Z"

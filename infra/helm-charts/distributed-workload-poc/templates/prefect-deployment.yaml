@@ -4,7 +4,7 @@ kind: Deployment
 metadata:
   name: prefect-server
   labels:
-    {{- include "distributed-workload-platform.labels" . | nindent 4 }}
+    {{- include "distributed-workload-poc.labels" . | nindent 4 }}
     app: prefect-server
 spec:
   replicas: 1
@@ -15,7 +15,7 @@ spec:
     metadata:
       labels:
         app: prefect-server
-        {{- include "distributed-workload-platform.labels" . | nindent 8 }}
+        {{- include "distributed-workload-poc.labels" . | nindent 8 }}
     spec:
       containers:
         - name: prefect-server
@@ -33,6 +33,9 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.prefect.port }}
+          volumeMounts:
+            - name: workloads-orchestration
+              mountPath: /workspace/workloads/orchestration
           livenessProbe:
             httpGet:
               path: /api/health
@@ -47,4 +50,8 @@ spec:
             periodSeconds: 5
           resources:
             {{- toYaml .Values.prefect.resources | nindent 12 }}
+      volumes:
+        - name: workloads-orchestration
+          configMap:
+            name: workloads-orchestration
 {{- end }}

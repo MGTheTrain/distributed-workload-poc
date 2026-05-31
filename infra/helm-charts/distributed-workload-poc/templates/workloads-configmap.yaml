@@ -1,0 +1,15 @@
+{{- range $dir := list "etl" "training" "tuning" "inference" "orchestration" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workloads-{{ $dir }}
+  labels:
+    {{- include "distributed-workload-poc.labels" $ | nindent 4 }}
+data:
+  {{- $glob := printf "files/workloads/%s/*" $dir }}
+  {{- range $path, $_ := $.Files.Glob $glob }}
+  {{ base $path }}: |-
+{{ $.Files.Get $path | indent 4 }}
+  {{- end }}
+{{- end }}
