@@ -1,94 +1,109 @@
 # HPC + Slurm vs Kubernetes + Ray
 
-**Comparison of two primary approaches for distributed ML workflows.**
+**Comparison of two common approaches for distributed ML workloads.**
 
 ## Side-by-Side Workflows
 
 ### HPC + Slurm Workflow
 
-**Scenario:** Large LLM pretraining on multi-node GPU cluster
+**Scenario:** Large LLM pretraining on a multi-node GPU cluster
 
 ```bash
-# Step 1: Submit Job
+# Step 1: Submit job
 $ sbatch train_llm.slurm
-# Requests N nodes, M GPUs per node, time limit
+# Requests N nodes, M GPUs per node, walltime limit
 
-# Step 2: Job Allocation
-# Slurm queues → allocates nodes exclusively
-# Wait time depends on cluster load
+# Step 2: Queueing & allocation
+# Slurm places job in queue
+# When resources are available, allocates a set of nodes exclusively
 
-# Step 3: Launch Training
+# Step 3: Launch training
 $ srun python train.py
-# Uses MPI/NCCL for multi-node communication
-# All nodes must start together
+# Often launches distributed processes (MPI, NCCL, torchrun)
+# All allocated nodes are expected to start together
 
-# Step 4: Monitor
-# Slurm provides job stats (GPU, memory, time)
-# Logs written to shared storage
+# Step 4: Monitoring
+# Slurm provides job status, resource usage, exit codes
+# Logs typically written to shared filesystem
 
-# Step 5: Checkpoint & Resume
-# Manual checkpoints
-# Job resubmission if preempted/fails
-```
+# Step 5: Checkpoint & recovery
+# Checkpointing is application-managed
+# On failure, job is usually resubmitted manually (or via wrappers)
+````
 
 **Characteristics:**
-- ✅ **Throughput:** Maximum
-- ❌ **Flexibility:** Low (queue times, static resources)
-- ❌ **Fault tolerance:** Minimal
-- 🎯 **Best for:** Long-running, tightly-coupled jobs
 
-### 2️⃣ Kubernetes + Ray Workflow
+* ✅ **Throughput:** High for large tightly-coupled jobs
+* ❌ **Flexibility:** Low (queue-based scheduling, static allocation per job)
+* ❌ **Elasticity:** None during a running job
+* ⚠️ **Fault tolerance:** Limited at scheduler level; depends on application checkpointing
+* 🎯 **Best for:** Long-running HPC workloads, tightly-coupled distributed training
 
-**Scenario:** LLM fine-tuning or multi-task experiments on cloud GPUs
+### Kubernetes + Ray Workflow
+
+**Scenario:** LLM fine-tuning or distributed experimentation on GPU infrastructure
 
 ```python
-# Step 1: Launch Cluster
-# K8s provisions GPU nodes dynamically
-# Ray head + workers started as pods
-# Auto-scaling enabled
+# Step 1: Provision cluster
+# Kubernetes schedules GPU nodes (cloud or on-prem)
+# Ray head + worker pods deployed on cluster
 
-# Step 2: Submit Training Job
+# Step 2: Submit training job
 from ray.train.torch import TorchTrainer
+
 trainer = TorchTrainer(...)
 result = trainer.fit()
 
-# Step 3: Dynamic Resource Management
-# Nodes/pods added or removed based on workload
-# Multiple jobs run concurrently
-# Hyperparameter tuning jobs start/stop independently
+# Step 3: Dynamic execution
+# Ray schedules tasks across available workers
+# Can run multiple training / tuning jobs concurrently
+# Autoscaling may add/remove worker pods
 
-# Step 4: Monitor
-# Ray dashboard: http://localhost:8265
-# K8s dashboard, Prometheus metrics
+# Step 4: Monitoring
+# Ray dashboard (default :8265)
+# Kubernetes dashboards + Prometheus/Grafana metrics
 
-# Step 5: Checkpoint & Resume
-# Built-in checkpointing
-# Elastic rescheduling on node failures
+# Step 5: Checkpoint & recovery
+# Ray supports checkpointing and task retry
+# Failed tasks can be rescheduled automatically
+# Elastic training supported in some frameworks
 ```
 
 **Characteristics:**
-- ⚡ **Throughput:** Slightly lower (network overhead)
-- ✅ **Flexibility:** High (elastic scaling, many workloads)
-- ✅ **Fault tolerance:** Built-in
-- 🎯 **Best for:** Agile experimentation, production ML pipelines
+
+* ⚡ **Throughput:** High, but with orchestration overhead vs bare-metal HPC
+* ✅ **Flexibility:** High (multi-job scheduling, heterogeneous workloads)
+* ✅ **Elasticity:** Supported via Kubernetes autoscaling + Ray autoscaler
+* ⚠️ **Fault tolerance:** Task-level retries + checkpoint-based recovery (framework-dependent)
+* 🎯 **Best for:** Iterative ML development, hyperparameter tuning, mixed workloads, production ML pipelines
 
 ## Feature Comparison
 
-| Feature | HPC + Slurm | Kubernetes + Ray |
-|---------|------------|-----------------|
-| **Resource allocation** | Fixed, queued | Dynamic, elastic |
-| **Job start** | All nodes together | Tasks scheduled as pods |
-| **Fault tolerance** | Minimal | Automatic recovery |
-| **Scaling** | Hard, manual | Easy, auto-scaling |
-| **Workload type** | Single large job | Many simultaneous jobs |
-| **Monitoring** | Slurm logs | Dashboards, metrics |
-| **Flexibility** | Low | High |
-| **Peak throughput** | Max | Slightly lower |
-| **Network** | InfiniBand | Ethernet (+ RDMA in cloud) |
+| Feature                   | HPC + Slurm                                     | Kubernetes + Ray                             |
+| ------------------------- | ----------------------------------------------- | -------------------------------------------- |
+| Resource allocation model | Static per job (queued allocation)              | Dynamic (pod-based scheduling + autoscaling) |
+| Job execution model       | Bulk synchronous (all nodes allocated together) | Task- and actor-based execution              |
+| Fault handling            | Application-driven checkpoint/restart           | Scheduler + framework-level retries          |
+| Scaling during execution  | Not supported                                   | Supported (depending on setup)               |
+| Workload type             | Primarily single large jobs                     | Many concurrent and heterogeneous jobs       |
+| Monitoring                | Slurm accounting + logs                         | Metrics + dashboards + logs                  |
+| Operational model         | Batch scheduling                                | Continuous orchestration                     |
+| Peak efficiency           | Very high (minimal overhead)                    | High (orchestration overhead present)        |
+
+## Key Clarifications
+
+* Slurm does not provide automatic recovery of distributed tasks; recovery is application-driven.
+* Kubernetes provides container restart semantics, but distributed fault tolerance is provided by frameworks like Ray.
+* “Elastic training” depends on framework and workload design; it is not guaranteed.
+* High-performance interconnects (e.g., InfiniBand) are common in HPC but are not a Slurm requirement.
 
 ## Resources
-- [Ray on Slurm](https://docs.ray.io/en/latest/cluster/vms/user-guides/community/slurm.html)
-- [KubeRay](https://docs.ray.io/en/latest/cluster/kubernetes/index.html)
-- [Slurm Documentation](https://slurm.schedmd.com/documentation.html)
 
-**TL;DR:** HPC = max performance for long jobs; K8s+Ray = flexible multi-workload environment.
+* [https://docs.ray.io/en/latest/cluster/vms/user-guides/community/slurm.html](https://docs.ray.io/en/latest/cluster/vms/user-guides/community/slurm.html)
+* [https://docs.ray.io/en/latest/cluster/kubernetes/index.html](https://docs.ray.io/en/latest/cluster/kubernetes/index.html)
+* [https://slurm.schedmd.com/documentation.html](https://slurm.schedmd.com/documentation.html)
+
+## TL;DR
+
+HPC + Slurm: optimized for **static, high-efficiency batch workloads**.
+Kubernetes + Ray: optimized for **flexible, elastic, multi-workload ML systems**.
