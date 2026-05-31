@@ -2,7 +2,7 @@
 
 export PROJECT_ROOT ?= $(CURDIR)
 
-RUNTIME ?= docker
+RUNTIME ?= compose
 NAMESPACE ?= ml-stack
 
 COMPOSE_FILE ?= infra/compose/docker-compose.yml
@@ -13,7 +13,7 @@ PREFECT_POD  = $$(kubectl get pod -n $(NAMESPACE) -l app=prefect-server -o name 
 
 # Runtime abstraction
 
-ifeq ($(RUNTIME),docker)
+ifeq ($(RUNTIME),compose)
 
 RAY_EXEC     = $(COMPOSE) exec ray-head
 PREFECT_EXEC = $(COMPOSE) exec prefect
@@ -25,7 +25,7 @@ PREFECT_EXEC = kubectl exec -n $(NAMESPACE) $(PREFECT_POD) --
 
 else
 
-$(error Unsupported RUNTIME='$(RUNTIME)' (expected docker|k8s))
+$(error Unsupported RUNTIME='$(RUNTIME)' (expected compose|k8s))
 
 endif
 
@@ -38,7 +38,7 @@ help: ## Show available targets
 	@echo 'Current runtime: $(RUNTIME)'
 	@echo ''
 	@echo 'Usage:'
-	@echo '  make <target> [RUNTIME=docker|k8s]'
+	@echo '  make <target> [RUNTIME=compose|k8s]'
 	@echo ''
 	@awk 'BEGIN {FS = ":.*?## "}; /^[a-zA-Z0-9_-]+:.*?## / {printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
@@ -65,14 +65,14 @@ test-inference-api: ## Test inference API
 # Runtime lifecycle
 
 start: ## Start platform
-ifeq ($(RUNTIME),docker)
+ifeq ($(RUNTIME),compose)
 	@$(COMPOSE) up -d
 else
 	@bash scripts/deploy-to-kind.sh
 endif
 
 stop: ## Stop platform
-ifeq ($(RUNTIME),docker)
+ifeq ($(RUNTIME),compose)
 	@$(COMPOSE) down
 else
 	@bash scripts/cleanup-kind.sh
@@ -81,7 +81,7 @@ endif
 restart: stop start ## Restart platform
 
 logs: ## Follow platform logs
-ifeq ($(RUNTIME),docker)
+ifeq ($(RUNTIME),compose)
 	@$(COMPOSE) logs -f
 else
 	@echo "Use kubectl logs for specific workloads:"
@@ -89,7 +89,7 @@ else
 endif
 
 rebuild: ## Rebuild images (docker only)
-ifeq ($(RUNTIME),docker)
+ifeq ($(RUNTIME),compose)
 	@$(COMPOSE) build
 else
 	@echo "Rebuild not applicable for k8s runtime"

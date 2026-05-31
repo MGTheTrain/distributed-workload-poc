@@ -19,6 +19,8 @@ Tracked future improvements and planned work items are maintained in [BACKLOG.md
 Docker is the default runtime.
 
 ```bash
+export RUNTIME=compose
+
 # 1. Start platform
 make start
 
@@ -95,10 +97,10 @@ make stop
 ```bash
 Distributed Workload PoC
 
-Current runtime: docker
+Current runtime: compose
 
 Usage:
-  make <target> [RUNTIME=docker|k8s]
+  make <target> [RUNTIME=compose|k8s]
 
   help                           Show available targets
   open-ray                       Open Ray dashboard
