@@ -7,7 +7,6 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-
 # Trap to cleanup all background jobs on exit
 cleanup() {
     echo ""
@@ -24,7 +23,7 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 
 # Check if namespace exists
-if [ "$FORWARD_ML" = true ] && ! kubectl get namespace ml-stack &> /dev/null; then
+if [ "$FORWARD_ML" = true ] && ! kubectl get namespace ml-stack &>/dev/null; then
     echo -e "${YELLOW}  Namespace 'ml-stack' not found${NC}"
     echo -e "${YELLOW} Deploy first with: make k8s-deploy${NC}"
     exit 1

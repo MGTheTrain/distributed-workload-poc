@@ -7,23 +7,23 @@
 #SBATCH --partition=compute
 
 # Start Ray cluster on SLURM
-HEAD_NODE=$(scontrol show hostname $SLURM_NODELIST | head -n1)
-HEAD_IP=$(srun --nodes=1 --ntasks=1 -w $HEAD_NODE hostname --ip-address)
+HEAD_NODE=$(scontrol show hostname "$SLURM_NODELIST" | head -n1)
+HEAD_IP=$(srun --nodes=1 --ntasks=1 -w "$HEAD_NODE" hostname --ip-address)
 
 echo "Starting Ray head node on $HEAD_NODE ($HEAD_IP)"
 
 # Start head node
-srun --nodes=1 --ntasks=1 -w $HEAD_NODE \
+srun --nodes=1 --ntasks=1 -w "$HEAD_NODE" \
     ray start --head --port=6379 --dashboard-host=0.0.0.0 --block &
 
 sleep 10
 
 # Start worker nodes
-WORKER_NODES=$(scontrol show hostname $SLURM_NODELIST | tail -n +2)
+WORKER_NODES=$(scontrol show hostname "$SLURM_NODELIST" | tail -n +2)
 for node in $WORKER_NODES; do
     echo "Starting Ray worker on $node"
-    srun --nodes=1 --ntasks=1 -w $node \
-        ray start --address=$HEAD_IP:6379 --block &
+    srun --nodes=1 --ntasks=1 -w "$node" \
+        ray start --address="$HEAD_IP":6379 --block &
 done
 
 sleep 5

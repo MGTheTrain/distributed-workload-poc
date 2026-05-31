@@ -58,7 +58,7 @@ print(Fore.BLUE + "Saved test images:", image_paths)
 
 # Health check
 health = requests.get(f"{BASE_URL}/")
-print(Fore.BLUE + f"Health:", Fore.WHITE + f"{health.json()}")
+print(Fore.BLUE + "Health:", Fore.WHITE + f"{health.json()}")
 
 # Single prediction
 with open(image_paths[0], "rb") as f:
@@ -66,7 +66,7 @@ with open(image_paths[0], "rb") as f:
         f"{BASE_URL}/predict",
         files={"file": f},
     )
-    print(Fore.BLUE + f"Single prediction:", Fore.WHITE + f"{response.json()}")
+    print(Fore.BLUE + "Single prediction:", Fore.WHITE + f"{response.json()}")
 
 # Batch prediction
 files = [("files", open(p, "rb")) for p in image_paths]
@@ -74,4 +74,4 @@ response = requests.post(
     f"{BASE_URL}/batch_predict",
     files=files,
 )
-print(Fore.BLUE + f"Batch prediction:", Fore.WHITE + f"{response.json()}")
+print(Fore.BLUE + "Batch prediction:", Fore.WHITE + f"{response.json()}")
