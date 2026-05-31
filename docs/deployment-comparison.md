@@ -9,95 +9,95 @@
 **Providers:** [EKS](https://aws.amazon.com/eks/), [GKE](https://cloud.google.com/kubernetes-engine), [AKS](https://azure.microsoft.com/en-us/products/kubernetes-service)
 
 **Pros:**
-- ✅ Auto-scaling (pods + nodes)
-- ✅ Self-healing (restarts, rescheduling)
+- ✅ Auto-scaling (nodes + pods, depending on configuration)
+- ✅ Infrastructure-level self-healing (pod restart, rescheduling)
 - ✅ Declarative deployment (YAML, operators)
-- ✅ Production observability (Prometheus, Grafana)
+- ✅ Observability ecosystem (Prometheus, Grafana, etc.)
 - ✅ Managed control plane
 
 **Cons:**
-- ❌ Complexity (K8s learning curve)
-- ❌ Cost overhead (control plane, load balancers)
-- ❌ Slight network latency vs bare metal
+- ❌ Operational complexity (Kubernetes learning curve)
+- ❌ Cost overhead (control plane, networking, load balancers)
+- ❌ Network latency overhead vs bare-metal systems
 
-**Best for:** Production ML pipelines, elastic workloads, multi-tenant
+**Best for:** Production ML systems, elastic workloads, multi-tenant environments
 
 ### 2️⃣ Self-Hosted Kubernetes
 
 **Tools:** [Rancher](https://www.rancher.com/), [Kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/), [Kind](https://kind.sigs.k8s.io/) (dev)
 
 **Pros:**
-- ✅ Full control over infrastructure
-- ✅ Cost savings (no managed fees)
-- ✅ Custom networking (RDMA, InfiniBand)
+- ✅ Full infrastructure control
+- ✅ Potential cost efficiency at scale
+- ✅ Custom networking (e.g., RDMA, InfiniBand where available)
 
 **Cons:**
-- ❌ Ops burden (upgrades, security, monitoring)
-- ❌ Requires K8s expertise
-- ❌ No auto-provisioning
+- ❌ High operational burden (upgrades, security, observability)
+- ❌ Requires deep Kubernetes expertise
+- ❌ No native node provisioning unless separately integrated
 
-**Best for:** On-prem deployments, compliance requirements
+**Best for:** On-prem environments, compliance-constrained deployments, specialized hardware setups
 
-### 3️⃣ Virtual Machines (Terraform/Ansible/Puppet/Chef)
+### 3️⃣ Virtual Machines (Terraform / Ansible / Puppet / Chef)
 
 **Providers:** [EC2](https://aws.amazon.com/ec2/), [Compute Engine](https://cloud.google.com/compute), [Azure VMs](https://azure.microsoft.com/en-us/products/virtual-machines)
 
 **Pros:**
-- ✅ Simple, flexible
-- ✅ Full SSH access
-- ✅ No orchestration overhead
+- ✅ High flexibility and transparency
+- ✅ Full OS-level control (SSH access, custom stacks)
+- ✅ Low abstraction overhead
 
 **Cons:**
-- ❌ Manual scaling, failure handling
-- ❌ No native job scheduling
-- ❌ Ops complexity for multi-node
+- ❌ No built-in orchestration or scheduling
+- ❌ Manual scaling and failure handling unless custom-built
+- ❌ Multi-node coordination must be implemented explicitly
 
-**Best for:** Fixed-size workloads, short experiments, debugging
+**Best for:** Small-to-medium experiments, debugging, fixed-size workloads, custom systems
 
 ### 4️⃣ HPC Clusters (Slurm)
 
 **Systems:** [NERSC](https://www.nersc.gov/), [TACC](https://www.tacc.utexas.edu/), [Summit](https://www.olcf.ornl.gov/summit/)
 
 **Pros:**
-- ✅ Maximum throughput (InfiniBand, NVLink)
-- ✅ Massive scale (1000s of nodes)
-- ✅ Specialized for scientific computing
+- ✅ Very high throughput for tightly coupled workloads
+- ✅ Efficient use of specialized interconnects (e.g., InfiniBand, NVLink where available)
+- ✅ Mature batch scheduling for large-scale compute jobs
 
 **Cons:**
-- ❌ Fixed resources (no elasticity)
-- ❌ Queue wait times
-- ❌ Batch-oriented (not for real-time)
+- ❌ Queue-based allocation (no elasticity during job execution)
+- ❌ Limited scheduler-level fault recovery (application-managed checkpointing required)
+- ❌ Batch-oriented workflow (not suited for interactive or continuously scaling workloads)
 
-**Best for:** Large-scale pretraining, scientific simulations
+**Best for:** Large-scale distributed training, scientific simulations, tightly coupled HPC workloads
 
 ## Decision Matrix
 
 | Factor | Managed K8s | Self-Hosted K8s | VMs | HPC |
-|--------|------------|----------------|-----|-----|
-| **Setup Time** | Minutes | Days | Minutes | Weeks |
-| **Scaling** | Auto | Manual | Manual | Fixed |
-| **Fault Tolerance** | Built-in | DIY | None | Minimal |
-| **Cost** | Medium-High | Low-Medium | Low | High |
-| **Complexity** | Medium | High | Low | High |
-| **Throughput** | Good | Good | Good | Max |
-| **Flexibility** | High | High | High | Low |
-| **Best For** | Production ML | On-prem | Experimentation | LLM pretraining |
+|--------|-------------|-----------------|-----|-----|
+| Setup Time | Minutes | Days | Minutes | Weeks |
+| Scaling | Automatic (config-dependent) | Manual / custom | Manual | Fixed per job |
+| Fault Tolerance | Infrastructure-level self-healing | Infrastructure-level (DIY responsibility) | None inherent | Limited scheduler support |
+| Cost | Medium–High | Low–Medium | Low–Medium | High (specialized hardware) |
+| Complexity | Medium | High | Low | High |
+| Throughput | High | High | Medium–High | Very high |
+| Flexibility | High | High | High | Low |
+| Best For | Production ML systems | On-prem / custom infra | Experiments | HPC / pretraining |
 
-## Ray + Managed Kubernetes = Optimal Default
+## Ray + Managed Kubernetes (Common Pattern)
 
-**Why?**
-1. **Elasticity:** Ray's dynamic workers + K8s autoscaling
-2. **Reliability:** Self-healing, declarative state
-3. **Simplicity:** Managed control plane (EKS/GKE/AKS)
-4. **Production-ready:** Observability, security, networking
+**Why it is widely used:**
+- Elastic scheduling via Kubernetes + Ray autoscaling (configuration-dependent)
+- Fault isolation at pod + task level (framework-dependent)
+- Strong observability and deployment automation
 
-**Alternatives:**
-- **VMs:** Flexible but manual ops
-- **HPC:** Fixed-size, batch workloads only
+**Important caveat:**
+- Fault tolerance and elasticity depend on both **Ray configuration** and **training framework support**, not Kubernetes alone.
 
 ## Resources
-- [Ray on Kubernetes](https://docs.ray.io/en/latest/cluster/kubernetes/index.html)
-- [AWS EKS Best Practices](https://aws.github.io/aws-eks-best-practices/)
-- [Terraform AWS Modules](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest)
+- https://docs.ray.io/en/latest/cluster/kubernetes/index.html
+- https://aws.github.io/aws-eks-best-practices/
+- https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest
 
-**TL;DR:** Ray + managed K8s is the default for scalable production; VMs and HPC for specific use cases.
+## TL;DR
+
+Managed Kubernetes is a common default for scalable ML systems, while HPC is optimized for tightly coupled batch workloads and VMs remain the most flexible low-level option requiring manual orchestration.
