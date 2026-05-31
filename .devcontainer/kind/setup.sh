@@ -124,7 +124,7 @@ main() {
     install_kind
     create_cluster
     verify_cluster
-    install_pip_dependencies
+    # install_pip_dependencies
 
     ok "Setup complete."
 }
