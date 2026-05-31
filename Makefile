@@ -1,194 +1,166 @@
 # Distributed Workload PoC — developer commands
 
-export PROJECT_ROOT   ?= $(CURDIR)
+export PROJECT_ROOT ?= $(CURDIR)
+
+RUNTIME ?= docker
+NAMESPACE ?= ml-stack
 
 COMPOSE_FILE ?= infra/compose/docker-compose.yml
 COMPOSE      := docker compose -f $(COMPOSE_FILE)
 
-RAY_HEAD_POD = $$(kubectl get pod -n ml-stack -l ray.io/node-type=head -o name | head -1)
-PREFECT_POD = $$(kubectl get pod -n ml-stack -l app=prefect-server -o name | head -1)
+RAY_HEAD_POD = $$(kubectl get pod -n $(NAMESPACE) -l ray.io/node-type=head -o name | head -1)
+PREFECT_POD  = $$(kubectl get pod -n $(NAMESPACE) -l app=prefect-server -o name | head -1)
 
-help: ## Show this help message
-	@echo 'Usage: make [target]'
+# Runtime abstraction
+
+ifeq ($(RUNTIME),docker)
+
+RAY_EXEC     = $(COMPOSE) exec ray-head
+PREFECT_EXEC = $(COMPOSE) exec prefect
+
+else ifeq ($(RUNTIME),k8s)
+
+RAY_EXEC     = kubectl exec -n $(NAMESPACE) $(RAY_HEAD_POD) --
+PREFECT_EXEC = kubectl exec -n $(NAMESPACE) $(PREFECT_POD) --
+
+else
+
+$(error Unsupported RUNTIME='$(RUNTIME)' (expected docker|k8s))
+
+endif
+
+# Help
+
+help: ## Show available targets
 	@echo ''
-	@echo 'Common targets:'
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## \[Common\]/ {printf "  \033[35m%-27s\033[0m %s\n", $$1, substr($$2, 10)}' $(MAKEFILE_LIST)
+	@echo 'Distributed Workload PoC'
 	@echo ''
-	@echo 'Docker Compose targets:'
-	@awk 'BEGIN {FS = ":.*?## "} /^compose-[a-zA-Z_-]+:.*?## \[Compose\]/ {printf "  \033[36m%-27s\033[0m %s\n", $$1, substr($$2, 11)}' $(MAKEFILE_LIST)
+	@echo 'Current runtime: $(RUNTIME)'
 	@echo ''
-	@echo 'Kubernetes targets:'
-	@awk 'BEGIN {FS = ":.*?## "} /^k8s-[a-zA-Z_-]+:.*?## \[K8s\]/ {printf "  \033[33m%-27s\033[0m %s\n", $$1, substr($$2, 7)}' $(MAKEFILE_LIST)
+	@echo 'Usage:'
+	@echo '  make <target> [RUNTIME=docker|k8s]'
+	@echo ''
+	@awk 'BEGIN {FS = ":.*?## "}; /^[a-zA-Z0-9_-]+:.*?## / {printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-# Common Targets
+# Common
 
-open-ray: ## [Common] Open Ray Dashboard
-	@echo " Opening Ray Dashboard..."
-	@open http://localhost:8265 2>/dev/null || xdg-open http://localhost:8265 2>/dev/null || echo "Open http://localhost:8265"
+open-ray: ## Open Ray dashboard
+	@open http://localhost:8265 2>/dev/null || \
+	 xdg-open http://localhost:8265 2>/dev/null || \
+	 echo "Open http://localhost:8265"
 
-open-mlflow: ## [Common] Open MLflow Dashboard
-	@echo " Opening MLflow Dashboard..."
-	@open http://localhost:5001 2>/dev/null || xdg-open http://localhost:5001 2>/dev/null || echo "Open http://localhost:5001"
+open-mlflow: ## Open MLflow dashboard
+	@open http://localhost:5001 2>/dev/null || \
+	 xdg-open http://localhost:5001 2>/dev/null || \
+	 echo "Open http://localhost:5001"
 
-open-prefect: ## [Common] Open Prefect Dashboard
-	@echo " Opening Prefect Dashboard..."
-	@open http://localhost:4200 2>/dev/null || xdg-open http://localhost:4200 2>/dev/null || echo "Open http://localhost:4200"
+open-prefect: ## Open Prefect dashboard
+	@open http://localhost:4200 2>/dev/null || \
+	 xdg-open http://localhost:4200 2>/dev/null || \
+	 echo "Open http://localhost:4200"
 
-test-inference-api: ## [Common] Test inference service API
-	@echo " Testing inference api..."
-	@python ./scripts/test-inference-api.py
+test-inference-api: ## Test inference API
+	@python scripts/test-inference-api.py
 
-# Docker Compose Targets
+# Runtime lifecycle
 
-compose-start: ## [Compose] Start all services
+start: ## Start platform
+ifeq ($(RUNTIME),docker)
 	@$(COMPOSE) up -d
+else
+	@bash scripts/deploy-to-kind.sh
+endif
 
-compose-stop: ## [Compose] Stop all services
+stop: ## Stop platform
+ifeq ($(RUNTIME),docker)
 	@$(COMPOSE) down
+else
+	@bash scripts/cleanup-kind.sh
+endif
 
-compose-restart: compose-stop compose-start ## [Compose] Restart all services
+restart: stop start ## Restart platform
 
-compose-rebuild: ## [Compose] Rebuild all images
-	@echo "🔨 Rebuilding all images..."
-	@$(COMPOSE) build
-	@echo " Rebuild complete"
-
-compose-logs: ## [Compose] Show logs
+logs: ## Follow platform logs
+ifeq ($(RUNTIME),docker)
 	@$(COMPOSE) logs -f
+else
+	@echo "Use kubectl logs for specific workloads:"
+	@kubectl get pods -n $(NAMESPACE)
+endif
 
-compose-clean: ## [Compose] Stop and remove everything
-	@$(COMPOSE) down -v
-	@docker system prune -f
+rebuild: ## Rebuild images (docker only)
+ifeq ($(RUNTIME),docker)
+	@$(COMPOSE) build
+else
+	@echo "Rebuild not applicable for k8s runtime"
+endif
 
-# ETL Workloads
-
-compose-etl-ray: ## [Compose] Run ETL (dashboard logs)
-	@echo " Submitting ETL job..."
-	@$(COMPOSE) exec ray-head ray job submit -- python /workspace/workloads/etl/ray_etl_pipeline.py
-
-# ML Training Workloads
-
-compose-train-ray: ## [Compose] Run PyTorch training (dashboard logs)
-	@echo " Submitting training job..."
-	@$(COMPOSE) exec ray-head ray job submit -- python /workspace/workloads/training/ray_train_pytorch.py
-
-# ML Tuning Workloads
-
-compose-tune-ray: ## [Compose] Run hyperparameter tuning (dashboard logs)
-	@echo " Submitting tuning job..."
-	@$(COMPOSE) exec ray-head ray job submit -- python /workspace/workloads/tuning/ray_tune_pytorch.py
-
-# ML Inference Workloads
-
-compose-serve-start-ray: ## [Compose] Deploy inference service
-	@echo " Deploying inference service..."
-	@$(COMPOSE) exec ray-head bash -c "ray job submit -- bash -c 'cd /workspace/workloads/inference && serve deploy serve_config.yaml'"
-
-compose-serve-stop-ray: ## [Compose] Stop inference service
-	@echo " Stopping inference service..."
-	@$(COMPOSE) exec ray-head serve shutdown --yes
-
-# Prefect Orchestrated Workloads
-
-compose-run-pipeline-prefect: ## [Compose] Run ML training pipeline (Prefect)
-	@echo " Running ML training pipeline via Prefect..."
-	@$(COMPOSE) exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-pipeline
-
-compose-deploy-model-prefect: ## [Compose] Deploy model (Prefect)
-	@echo " Deploying model via Prefect..."
-	@$(COMPOSE) exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-model
-
-compose-run-etl-prefect: ## [Compose] Run ETL only (Prefect)
-	@echo " Running ETL via Prefect..."
-	@$(COMPOSE) exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-etl
-
-compose-deploy-schedules-prefect: ## [Compose] Deploy Prefect schedules
-	@echo " Deploying Prefect schedules..."
-	@$(COMPOSE) exec prefect python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-schedules
-
-# Kubernetes Targets
-
-k8s-deploy: ## [K8s] Deploy to Kind cluster
-	@echo " Deploying to Kind cluster..."
-	@bash scripts/deploy-to-kind.sh
-
-k8s-clean: ## [K8s] Cleanup Kind cluster
-	@echo " Cleaning up Kind cluster..."
-	@bash scripts/cleanup-kind.sh
-
-k8s-redeploy: ## [K8s] Uninstall + install (full reset) PoC k8s resources on the kind cluster
-	@bash scripts/cleanup-kind.sh
-	@bash scripts/deploy-to-kind.sh
-
-k8s-forward: ## [K8s] Port-forward dashboards
-	@echo " Port-forwarding services..."
+forward: ## Port-forward dashboards (k8s only)
+ifeq ($(RUNTIME),k8s)
 	@bash scripts/port-forward-in-kind.sh
+else
+	@echo "Docker runtime exposes dashboards directly"
+endif
 
-# Workload Execution on K8s
+# Ray workloads
 
-k8s-etl-ray: ## [K8s] Run ETL on K8s
-	@echo " Submitting ETL on Kubernetes..."
-	@kubectl exec -n ml-stack $(RAY_HEAD_POD) -- \
-		bash -c "ray job submit -- python /workspace/workloads/etl/ray_etl_pipeline.py"
+etl-ray: ## Run ETL workload via Ray
+	@echo "Submitting ETL workload..."
+	@$(RAY_EXEC) bash -c \
+	"ray job submit -- python /workspace/workloads/etl/ray_etl_pipeline.py"
 
-k8s-train-ray: ## [K8s] Run PyTorch training on K8s
-	@echo " Submitting training job on Kubernetes..."
-	@kubectl exec -n ml-stack $(RAY_HEAD_POD) -- \
-		bash -c "ray job submit -- python /workspace/workloads/training/ray_train_pytorch.py"
+train-ray: ## Run training workload via Ray
+	@echo "Submitting training workload..."
+	@$(RAY_EXEC) bash -c \
+	"ray job submit -- python /workspace/workloads/training/ray_train_pytorch.py"
 
-k8s-tune-ray: ## [K8s] Run hyperparameter tuning on K8s
-	@echo " Submitting tuning job on Kubernetes..."
-	@kubectl exec -n ml-stack $(RAY_HEAD_POD) -- \
-		bash -c "ray job submit -- python /workspace/workloads/tuning/ray_tune_pytorch.py"
+tune-ray: ## Run hyperparameter tuning via Ray
+	@echo "Submitting tuning workload..."
+	@$(RAY_EXEC) bash -c \
+	"ray job submit -- python /workspace/workloads/tuning/ray_tune_pytorch.py"
 
-# ML Inference Workloads on K8s
+# Ray Serve
 
-k8s-serve-start-ray: ## [K8s] Deploy inference service on K8s
-	@echo " Deploying inference service..."
-	@kubectl exec -n ml-stack $(RAY_HEAD_POD) -- \
-		bash -c "cd /workspace/workloads/inference && serve deploy serve_config.yaml"
+serve-start-ray: ## Deploy inference service
+	@echo "Deploying inference service..."
+	@$(RAY_EXEC) bash -c \
+	"cd /workspace/workloads/inference && serve deploy serve_config.yaml"
+
+ifeq ($(RUNTIME),k8s)
 	@echo ""
-	@echo " Inference service deployed!"
+	@echo "Inference service deployed"
 	@echo ""
-	@echo " Starting port-forward to Ray Serve (port 8000)..."
-	@echo "   Press Ctrl+C to stop port-forwarding"
-	@echo "   Test endpoint: http://localhost:8000"
-	@echo "   Test inference API: make test-inference-api"
+	@echo "Starting port-forward on localhost:8000"
+	@kubectl port-forward -n $(NAMESPACE) svc/ray-cluster-head-svc 8000:8000
+endif
+
+serve-stop-ray: ## Stop inference service
+	@$(RAY_EXEC) bash -c "serve shutdown --yes"
+
+# Prefect workloads
+
+run-pipeline-prefect: ## Run ML pipeline via Prefect
+	@echo "Running ML pipeline..."
+	@$(PREFECT_EXEC) bash -c \
+	"python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-pipeline"
+
+deploy-model-prefect: ## Deploy model via Prefect
+	@echo "Deploying model..."
+	@$(PREFECT_EXEC) bash -c \
+	"python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-model"
+
+ifeq ($(RUNTIME),k8s)
 	@echo ""
-	@kubectl port-forward -n ml-stack svc/ray-cluster-head-svc 8000:8000
+	@echo "Starting port-forward on localhost:8000"
+	@kubectl port-forward -n $(NAMESPACE) svc/ray-cluster-head-svc 8000:8000
+endif
 
-k8s-serve-stop-ray: ## [K8s] Stop inference service on K8s
-	@echo " Stopping inference service..."
-	@kubectl exec -n ml-stack $(RAY_HEAD_POD) -- \
-		bash -c "serve shutdown --yes"
+run-etl-prefect: ## Run ETL via Prefect
+	@echo "Running ETL..."
+	@$(PREFECT_EXEC) bash -c \
+	"python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-etl"
 
-# Prefect Orchestrated Workloads on K8s
-
-k8s-run-pipeline-prefect: ## [K8s] Run ML pipeline via Prefect on K8s
-	@echo " Running ML pipeline via Prefect on Kubernetes..."
-	@kubectl exec -n ml-stack $(PREFECT_POD) -- \
-		bash -c "python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-pipeline"
-
-k8s-deploy-model-prefect: ## [K8s] Deploy model via Prefect on K8s
-	@echo " Deploying model via Prefect on Kubernetes..."
-	@kubectl exec -n ml-stack $(PREFECT_POD) -- \
-		bash -c "python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-model"
-	@echo ""
-	@echo " Inference service deployed!"
-	@echo ""
-	@echo " Starting port-forward to Ray Serve (port 8000)..."
-	@echo "   Press Ctrl+C to stop port-forwarding"
-	@echo "   Test endpoint: http://localhost:8000"
-	@echo "   Test inference API: make test-inference-api"
-	@echo ""
-	@kubectl port-forward -n ml-stack svc/ray-cluster-head-svc 8000:8000
-
-k8s-run-etl-prefect: ## [K8s] Run ETL only via Prefect on K8s
-	@echo " Running ETL via Prefect on Kubernetes..."
-	@kubectl exec -n ml-stack $(PREFECT_POD) -- \
-		bash -c "python /workspace/workloads/orchestration/workload_orchestrator_prefect.py run-etl"
-
-k8s-deploy-schedules-prefect: ## [K8s] Deploy Prefect schedules on K8s
-	@echo " Deploying Prefect schedules on Kubernetes..."
-	@kubectl exec -n ml-stack $(PREFECT_POD) -- \
-		bash -c "python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-schedules"
+deploy-schedules-prefect: ## Deploy Prefect schedules
+	@echo "Deploying schedules..."
+	@$(PREFECT_EXEC) bash -c \
+	"python /workspace/workloads/orchestration/workload_orchestrator_prefect.py deploy-schedules"

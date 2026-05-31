@@ -8,108 +8,118 @@ PoC demonstrating distributed workload orchestration using **Ray** as the primar
 
 > **NOTE:** This PoC focuses on local development (Docker Compose) and production-like testing (Kubernetes on Kind). For actual production deployments, **managed Kubernetes services** ([AWS EKS](https://aws.amazon.com/eks/), [GCP GKE](https://cloud.google.com/kubernetes-engine), [Azure AKS](https://azure.microsoft.com/en-us/products/kubernetes-service)) with Ray are recommended for their cluster (node) auto-scaling, reliability and operational simplicity. See [Deployment Comparison](./docs/deployment-comparison.md) for details.
 
-## Quick Start
+## Backlog
 
-Choose your deployment environment based on your needs:
+Tracked future improvements and planned work items are maintained in [BACKLOG.md](./BACKLOG.md).
+
+## Quick Start
 
 ### Local Development (Docker Compose)
 
-**Prerequisites:** Docker + Docker Compose. Consider existing [dev container](.devcontainer/kind/devcontainer.json) for local setup
+Docker is the default runtime.
 
-#### Option 1: Direct Ray Execution
 ```bash
-# 1. Start distributed cluster
-make compose-start
+# 1. Start platform
+make start
 
-# 2. Run workloads directly on Ray
-make compose-etl-ray            # Distributed ETL
-make compose-train-ray          # Distributed ML training
-make compose-tune-ray           # Distributed hyperparameter tuning
-make compose-serve-start-ray    # Inference serving
-make test-inference-api         # Test inference service API
+# 2. Dashboards
+make open-ray
+make open-mlflow
+make open-prefect
 
-# 3. View dashboards
-make open-ray                   # Ray Dashboard (http://localhost:8265)
-make open-mlflow                # MLflow UI (http://localhost:5001)
+# 3. Run workloads (Ray)
+make etl-ray
+make train-ray
+make tune-ray
 
-# 4. Stop and cleanup
-make compose-clean
+# OR run via Prefect
+make run-pipeline-prefect
+make run-etl-prefect
+
+# 4. Deploy inference API server
+make serve-start-ray
+make test-inference-api
+
+# OR via Prefect
+make deploy-model-prefect
+
+# Stop inference API server
+make serve-stop-ray
+
+# 5. Stop platform
+make stop
 ```
 
-#### Option 2: Prefect-Orchestrated Workflows
-```bash
-# 1. Start distributed cluster (includes Prefect)
-make compose-start
+### Kubernetes (Kind)
 
-# 2. Run orchestrated ML pipeline
-make compose-run-pipeline-prefect   # Full pipeline: ETL → Tune → Train
-make compose-run-etl-prefect        # Distributed ETL only
-make compose-deploy-model-prefect   # Deploy model / Inference serving
-make test-inference-api             # Test inference service API
+Same commands. Just switch runtime.
 
-# 3. View dashboards
-make open-prefect               # Prefect UI (http://localhost:4200)
-make open-ray                   # Ray Dashboard (http://localhost:8265)
-make open-mlflow                # MLflow UI (http://localhost:5001)
+```sh
+export RUNTIME=k8s
 
-# 4. Schedule workflows (optional)
-make compose-deploy-schedules-prefect  # Deploy daily/hourly schedules
+# 1. Start platform
+make start
 
-# 5. Stop and cleanup
-make compose-clean
+# 2. Dashboards
+make open-ray
+make open-mlflow
+make open-prefect
+
+# 3. Port-forward dashboards (separate terminal)
+make forward
+
+# 4. Run workloads (Ray)
+make etl-ray
+make train-ray
+make tune-ray
+
+# OR Prefect workflows
+make run-pipeline-prefect
+make run-etl-prefect
+
+# 5. Deploy inference API server
+make serve-start-ray
+make test-inference-api
+
+# OR via Prefect
+make deploy-model-prefect
+
+# Stop inference API server
+make serve-stop-ray
+
+# 6. Stop platform
+make stop
 ```
 
-### Production-like Environment (Kubernetes)
-
-**Prerequisites:** Docker + Kind cluster. Consider existing [dev container](.devcontainer/kind/devcontainer.json) for local setup
-
-#### Option 1: Direct Ray Execution on Kubernetes
+## Available Commands
 ```bash
-# 1. Deploy complete ML stack to Kind cluster
-make k8s-deploy
+Distributed Workload PoC
 
-# 2. Port-forward dashboards in separate terminal (required for access)
-make k8s-forward
+Current runtime: docker
 
-# 3. Run workloads directly on Ray cluster
-make k8s-etl-ray                # Distributed ETL
-make k8s-train-ray              # Distributed ML training
-make k8s-tune-ray               # Distributed hyperparameter tuning
-make k8s-serve-start-ray        # Inference serving
-make test-inference-api         # Test inference service API
+Usage:
+  make <target> [RUNTIME=docker|k8s]
 
-# 4. View dashboards
-make open-ray                   # Ray Dashboard (http://localhost:8265)
-make open-mlflow                # MLflow UI (http://localhost:5001)
-
-# 5. Cleanup
-make k8s-clean
-```
-
-#### Option 2: Prefect-Orchestrated Workflows on Kubernetes
-```bash
-# 1. Deploy complete ML stack to Kind cluster
-make k8s-deploy
-
-# 2. Port-forward dashboards in separate terminal (required for access)
-make k8s-forward
-
-# 3. Run orchestrated ML pipeline
-make k8s-run-pipeline-prefect   # Full pipeline: ETL → Tune → Train
-make k8s-run-etl-prefect        # Distributed ETL only
-make k8s-deploy-model-prefect   # Deploy model / Inference serving
-make test-inference-api         # Test inference service API
-
-# 4. View dashboards
-make open-prefect               # Prefect UI (http://localhost:4200)
-make open-ray                   # Ray Dashboard (http://localhost:8265)
-make open-mlflow                # MLflow UI (http://localhost:5001)
-
-# 5. Schedule workflows (optional)
-make k8s-deploy-schedules-prefect  # Deploy daily/hourly schedules
-
-# 6. Cleanup
-make k8s-clean
+  help                           Show available targets
+  open-ray                       Open Ray dashboard
+  open-mlflow                    Open MLflow dashboard
+  open-prefect                   Open Prefect dashboard
+  test-inference-api             Test inference API
+  start                          Start platform
+  stop                           Stop platform
+  restart                        Restart platform
+  logs                           Follow platform logs
+  rebuild                        Rebuild images (docker only)
+  forward                        Port-forward dashboards (k8s only)
+  etl-ray                        Run ETL workload via Ray
+  train-ray                      Run training workload via Ray
+  tune-ray                       Run hyperparameter tuning via Ray
+  serve-start-ray                Deploy inference service
+  serve-stop-ray                 Stop inference service
+  run-pipeline-prefect           Run ML pipeline via Prefect
+  deploy-model-prefect           Deploy model via Prefect
+  run-etl-prefect                Run ETL via Prefect
+  deploy-schedules-prefect       Deploy Prefect schedules
 ```
 
 ## Architecture
@@ -164,14 +174,6 @@ make k8s-clean
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Deployment Options
-
-| Environment | Use Case | Command | Production Ready |
-|------------|----------|---------|------------------|
-| **Docker Compose** | Local dev, testing | `make compose-start` | ❌ No |
-| **Kubernetes (Kind)** | Production-like testing | `make k8s-deploy` | ⚠️ Testing only |
-| **Managed Kubernetes** | Production workloads | See [Deployment comparison](./docs/deployment-comparison.md) | ✅ **Recommended** |
-
 ### Production Deployment
 
 For production workloads, use **managed Kubernetes services** with [KubeRay Operator](https://docs.ray.io/en/latest/cluster/kubernetes/index.html):
@@ -187,65 +189,3 @@ For production workloads, use **managed Kubernetes services** with [KubeRay Oper
 - Production-grade observability
 
 See [Deployment Comparison](./docs/deployment-comparison.md) for detailed guidance.
-
-## Future Enhancements
-
-### Out of Scope (Future Work)
-
-The following deployment patterns are **not covered** in this PoC but are valid production options:
-
-#### Ray on HPC Clusters (SLURM)
-- **Use case:** Maximum throughput for large-scale LLM pretraining
-- **Pattern:** Ray's [`symmetric-run`](https://docs.ray.io/en/latest/cluster/vms/user-guides/community/slurm.html) command on SLURM
-- **Network:** InfiniBand for multi-node GPU training
-- **Reference:** See [`scripts/ray_on_slurm.sh`](./scripts/ray_on_slurm.sh) (example only)
-
-#### Ray on Virtual Machines
-- **Use case:** Fixed-size workloads, maximum flexibility
-- **Pattern:** [Ray on VMs](https://docs.ray.io/en/latest/cluster/vms/index.html) with Terraform/Ansible/Puppet/Chef
-- **Tradeoff:** Manual scaling vs K8s auto-scaling
-
-For more details, see:
-- [HPC vs Kubernetes Workflows](./docs/hpc-vs-kubernetes.md)
-- [Deployment Comparison](./docs/deployment-comparison.md)
-
-## Available Commands
-```bash
-Usage: make [target]
-
-Common targets:
-  open-ray                    Open Ray Dashboard
-  open-mlflow                 Open MLflow Dashboard
-  open-prefect                Open Prefect Dashboard
-  test-inference-api          Test inference service API
-
-Docker Compose targets:
-  compose-start               Start all services
-  compose-stop                Stop all services
-  compose-rebuild             Rebuild all images
-  compose-logs                Show logs
-  compose-clean               Stop and remove everything
-  compose-etl-ray             Run ETL (dashboard logs)
-  compose-train-ray           Run PyTorch training (dashboard logs)
-  compose-tune-ray            Run hyperparameter tuning (dashboard logs)
-  compose-serve-start-ray     Deploy inference service
-  compose-serve-stop-ray      Stop inference service
-  compose-run-pipeline-prefect Run ML training pipeline (Prefect)
-  compose-deploy-model-prefect Deploy model (Prefect)
-  compose-run-etl-prefect     Run ETL only (Prefect)
-  compose-deploy-schedules-prefect Deploy Prefect schedules
-
-Kubernetes targets:
-  k8s-deploy                  Deploy to Kind cluster
-  k8s-clean                   Cleanup Kind cluster
-  k8s-forward                 Port-forward dashboards
-  k8s-etl-ray                 Run ETL on K8s
-  k8s-train-ray               Run PyTorch training on K8s
-  k8s-tune-ray                Run hyperparameter tuning on K8s
-  k8s-serve-start-ray         Deploy inference service on K8s
-  k8s-serve-stop-ray          Stop inference service on K8s
-  k8s-run-pipeline-prefect    Run ML pipeline via Prefect on K8s
-  k8s-deploy-model-prefect    Deploy model via Prefect on K8s
-  k8s-run-etl-prefect         Run ETL only via Prefect on K8s
-  k8s-deploy-schedules-prefect Deploy Prefect schedules on K8s
-```
