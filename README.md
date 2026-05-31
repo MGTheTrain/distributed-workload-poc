@@ -6,7 +6,7 @@
 
 PoC demonstrating distributed workload orchestration using **Ray** as the primary compute framework with **Prefect** for workflow orchestration, supporting cloud-native deployments (Kubernetes).
 
-> **NOTE:** This PoC focuses on local development (Docker Compose) and production-like testing (Kubernetes on Kind). For actual production deployments, **managed Kubernetes services** ([AWS EKS](https://aws.amazon.com/eks/), [GCP GKE](https://cloud.google.com/kubernetes-engine), [Azure AKS](https://azure.microsoft.com/en-us/products/kubernetes-service)) with Ray are recommended for their cluster (node) auto-scaling, reliability and operational simplicity. See [Deployment Comparison](./docs/deployment-comparison.md) for details.
+> **NOTE:** This PoC focuses on local development (Docker Compose) and production-like testing (Kind Kubernetes). For production deployments, managed Kubernetes services (AWS EKS, GCP GKE, Azure AKS) with Ray are recommended, as they provide managed control planes, high availability and support for cluster autoscaling. See [Deployment Comparison](./docs/deployment-comparison.md) for details.
 
 ## Backlog
 
