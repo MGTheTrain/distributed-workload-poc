@@ -65,6 +65,7 @@ class Config:
         os.getenv("GRACE_PERIOD", "3")
     )  # Min epochs before early stopping
     REDUCTION_FACTOR = int(os.getenv("REDUCTION_FACTOR", "2"))
+    CPU_PER_TRIAL = int(os.getenv("CPU_PER_TRIAL", "2"))
 
 
 # Configure environment for MLflow S3 access
@@ -433,7 +434,8 @@ def main() -> None:
         # Configure Tune
         tuner = tune.Tuner(
             tune.with_resources(
-                tune_mnist, resources={"cpu": 2, "gpu": 1 if use_gpu else 0}
+                tune_mnist,
+                resources={"cpu": Config.CPU_PER_TRIAL, "gpu": 1 if use_gpu else 0},
             ),
             param_space=search_space or {},  # Empty if using HyperOpt's space
             tune_config=tune.TuneConfig(

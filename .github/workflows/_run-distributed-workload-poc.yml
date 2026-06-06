@@ -1,0 +1,135 @@
+name: Run Distributed Workload PoC
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        required: true
+        type: string
+      label:
+        required: true
+        type: string
+      runtime:
+        required: true
+        type: string
+        description: "compose | k8s"
+
+jobs:
+  test:
+    runs-on: ${{ inputs.runner }}
+    name: ${{ inputs.label }}
+    timeout-minutes: 45
+    env:
+      PROJECT_ROOT: ${{ github.workspace }}
+      COMPOSE_FILE: infra/compose/docker-compose.ci.yml
+      RUNTIME: ${{ inputs.runtime }}
+      CI: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/workflows/_run-distributed-workload-poc.yml') }}
+          restore-keys: |
+            pip-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install test deps
+        run: |
+          pip install \
+            pytest requests \
+            pillow==12.0.0 colorama==0.4.6 numpy==1.26.4 \
+            torch==2.9.1 torchvision==0.24.1
+
+      # ── k8s setup (k8s runtime only) ──────────────────────────────
+      - name: Set up kind cluster
+        if: inputs.runtime == 'k8s'
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: kind
+
+      - name: Install Helm
+        if: inputs.runtime == 'k8s'
+        uses: azure/setup-helm@v4
+
+      # ── Start platform ────────────────────────────────────────────
+      - name: Start platform
+        run: make start
+
+      - name: Wait for pods (k8s)
+        if: inputs.runtime == 'k8s'
+        run: make k8s-wait-pods
+
+      - name: Start port-forwards (k8s)
+        if: inputs.runtime == 'k8s'
+        run: make forward-bg
+
+      - name: Wait for stack
+        run: make wait-healthy
+
+      # ── Workloads: etl → train ────────────────────────────────────
+      - name: ETL (Ray)
+        run: make etl-ray
+
+      - name: Cache MNIST data
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: mnist-${{ runner.arch }}
+
+      - name: Train (Ray)
+        run: |
+          make train-ray RAY_RUNTIME_ENV_JSON='{"env_vars":{"EPOCHS":"2","NUM_WORKERS":"1","CPU_PER_WORKER":"1","BATCH_SIZE":"16"}}'
+
+      # ── Inference ─────────────────────────────────────────────────
+      - name: Start inference API (Ray Serve)
+        run: make serve-start-ray
+
+      - name: Forward inference port (k8s)
+        if: inputs.runtime == 'k8s'
+        run: make forward-serve
+
+      - name: Test inference API
+        run: make test-inference-api
+
+      - name: Stop inference API
+        if: always()
+        run: make serve-stop-ray
+
+      # ── Diagnostics ───────────────────────────────────────────────
+      - name: Dump logs on failure (compose)
+        if: failure() && inputs.runtime == 'compose'
+        run: |
+          for svc in postgres mlflow prefect localstack ray-head ray-worker; do
+            echo "=== $svc ===" && docker compose -f "$COMPOSE_FILE" \
+              logs --tail=200 $svc 2>/dev/null || true
+          done
+
+      - name: Dump logs on failure (k8s)
+        if: failure() && inputs.runtime == 'k8s'
+        run: |
+          echo "=== Pods ==="
+          kubectl get pods -A -o wide
+          echo "=== Events ==="
+          kubectl get events -A --sort-by=.lastTimestamp | tail -50
+          for deploy in mlflow prefect-server postgres localstack; do
+            echo "=== $deploy ==="
+            kubectl -n "$NAMESPACE" logs deploy/$deploy --tail=200 2>/dev/null || true
+          done
+          echo "=== Ray ==="
+          kubectl -n "$NAMESPACE" logs -l ray.io/node-type=head --tail=200 2>/dev/null || true
+
+      # ── Tear down ─────────────────────────────────────────────────
+      - name: Stop port-forwards (k8s)
+        if: always() && inputs.runtime == 'k8s'
+        run: |
+          make forward-stop 2>/dev/null || true
+
+      - name: Stop platform
+        if: always()
+        run: make stop

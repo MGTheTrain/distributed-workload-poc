@@ -61,6 +61,7 @@ class Config:
         os.getenv("EPOCHS", "10")
     )  # Keep at 10 (tuning used 5, but train more)
     NUM_WORKERS = int(os.getenv("NUM_WORKERS", "2"))
+    CPU_PER_WORKER = int(os.getenv("CPU_PER_WORKER", "2"))
 
 
 # Configure environment for MLflow S3 access
@@ -284,7 +285,9 @@ def train_func(config: Dict[str, Any]) -> None:
                 correct += pred.eq(target.view_as(pred)).sum().item()
                 total += target.size(0)  # Count actual samples seen
 
-        # avg_test_loss = test_loss / len(test_loader) # NOTE: Calculation only valid for single node training
+        avg_test_loss = test_loss / len(
+            test_loader
+        )  # NOTE: Calculation only valid for single node training
         # accuracy = correct / len(test_loader.dataset) # NOTE: Calculation only valid for single node training
         accuracy = correct / total
 
@@ -429,7 +432,7 @@ def main() -> None:
             num_workers=Config.NUM_WORKERS,
             use_gpu=use_gpu,  # Auto-detected via Ray remote function
             resources_per_worker={
-                "CPU": 2,
+                "CPU": Config.CPU_PER_WORKER,
                 "GPU": 1 if use_gpu else 0,
             },
         )

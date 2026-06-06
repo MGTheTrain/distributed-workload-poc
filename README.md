@@ -111,6 +111,11 @@ Usage:
   logs                           Follow platform logs
   rebuild                        Rebuild images (docker only)
   forward                        Port-forward dashboards (k8s only)
+  forward-bg                     Background port-forward dashboards (k8s only; PID -> /tmp/dwp-pf.pid)
+  forward-serve                  Forward Ray Serve to localhost:8000 (k8s only; non-blocking)
+  forward-stop                   Stop background port-forwards (k8s only)
+  wait-healthy                   Block until Ray + MLflow + Prefect respond (max 120s)
+  k8s-wait-pods                  Block until platform pods are Ready (k8s only)
   etl-ray                        Run ETL workload via Ray
   train-ray                      Run training workload via Ray
   tune-ray                       Run hyperparameter tuning via Ray

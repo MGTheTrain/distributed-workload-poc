@@ -1,0 +1,14 @@
+ray-cluster:
+  head:
+    rayStartParams:
+      num-cpus: "1"
+    resources:
+      requests: { cpu: 500m, memory: 2Gi }
+      limits:   { cpu: "1",  memory: 4Gi }
+  worker:
+    replicas: 1
+    rayStartParams:
+      num-cpus: "1"
+    resources:
+      requests: { cpu: 250m, memory: 1Gi }
+      limits:   { cpu: "1",  memory: 3Gi }

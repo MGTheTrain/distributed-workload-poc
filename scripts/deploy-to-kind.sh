@@ -54,9 +54,16 @@ echo ""
 # ─── 4. Install ─────────────────────────────────────────────────
 echo -e "${YELLOW}⎈ Installing ${RELEASE}...${NC}"
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
-helm upgrade --install "${RELEASE}" "${CHART}" \
-    --namespace "${NAMESPACE}" \
-    --wait --timeout 5m
+
+if [ "${CI:-}" = "true" ]; then
+    helm upgrade --install "${RELEASE}" "${CHART}" \
+        --namespace "${NAMESPACE}" --wait --timeout 5m \
+        -f "$CHART/values.ci.yaml"
+else
+    helm upgrade --install "${RELEASE}" "${CHART}" \
+        --namespace "${NAMESPACE}" --wait --timeout 5m
+fi
+
 echo -e "${GREEN}✓ ${RELEASE} deployed${NC}"
 echo ""
 
