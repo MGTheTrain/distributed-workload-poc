@@ -1,0 +1,8 @@
+apiVersion: v2
+name: prefect
+description: Prefect orchestration server for the distributed-workload PoC. Custom
+  image; the workloads-orchestration volume is injected by the parent chart via
+  .Values.volumes / .Values.volumeMounts.
+type: application
+version: 0.1.0
+appVersion: "1.0"

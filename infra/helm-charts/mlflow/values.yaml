@@ -1,0 +1,28 @@
+enabled: true
+
+image:
+  repository: mgthetrain987/distributed-workload-poc-mlflow
+  tag: latest
+  pullPolicy: IfNotPresent
+
+port: 5000
+
+# Connection strings interpolated into the deployment template.
+backendStoreUri: "postgresql://mlflow:mlflow@postgres:5432/mlflow"
+artifactRoot: "s3://mlflow-artifacts/"
+s3Endpoint: "http://localstack:4566"
+aws:
+  accessKeyId: test
+  secretAccessKey: test
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Overridable; empty by default.
+volumes: []
+volumeMounts: []

@@ -62,13 +62,13 @@ export RUNTIME=k8s
 # 1. Start platform
 make start
 
-# 2. Dashboards
+# 2. Port-forward dashboards (separate terminal)
+make forward
+
+# 3. Dashboards
 make open-ray
 make open-mlflow
 make open-prefect
-
-# 3. Port-forward dashboards (separate terminal)
-make forward
 
 # 4. Run workloads (Ray)
 make etl-ray

@@ -1,9 +1,17 @@
-# PostgreSQL — backing store for MLflow (and Prefect, if you migrate
-# off SQLite). PoC-grade: emptyDir storage, single replica.
-# values.yaml — replaces the entire current postgres: block
+# ===========================================================================
+# distributed-workload-poc — umbrella values
+# ===========================================================================
+# mlflow and prefect are now local subcharts (siblings: ../mlflow, ../prefect).
+# Their blocks are passed straight through; keys are the subchart's own keys.
+#
+# The workloads-* ConfigMaps and the Ray PV/PVC are rendered by THIS chart's
+# templates/ (shared by ray-cluster and prefect), so they stay here.
+# ===========================================================================
+
+# --- PostgreSQL (community subchart) ---------------------------------------
 postgres:
   enabled: true
-  fullnameOverride: postgres   # ensures Service is "postgres", matching MLflow's connection string
+  fullnameOverride: postgres   # Service becomes "postgres", matching MLflow's connection string
   auth:
     username: mlflow
     password: mlflow
@@ -27,7 +35,7 @@ postgres:
   metrics:
     enabled: false
 
-# MLflow tracking server, custom image with the PostgreSQL + S3 wiring.
+# --- MLflow (local subchart ../mlflow) -------------------------------------
 mlflow:
   enabled: true
   image:
@@ -35,7 +43,6 @@ mlflow:
     tag: latest
     pullPolicy: IfNotPresent
   port: 5000
-  # Connection strings interpolated into the deployment template.
   backendStoreUri: "postgresql://mlflow:mlflow@postgres:5432/mlflow"
   artifactRoot: "s3://mlflow-artifacts/"
   s3Endpoint: "http://localstack:4566"
@@ -50,7 +57,7 @@ mlflow:
       cpu: 1000m
       memory: 1Gi
 
-# Prefect orchestrator, also a custom image.
+# --- Prefect (local subchart ../prefect) -----------------------------------
 prefect:
   enabled: true
   image:
@@ -66,8 +73,19 @@ prefect:
     limits:
       cpu: 1000m
       memory: 1Gi
+  # workloads-orchestration ConfigMap is owned by the parent (rendered in
+  # templates/workloads-configmaps.yaml). Injected into the subchart here.
+  # NOTE: Helm REPLACES list values on override — restate this whole block
+  # if you override volumes/volumeMounts downstream.
+  volumes:
+    - name: workloads-orchestration
+      configMap:
+        name: workloads-orchestration
+  volumeMounts:
+    - name: workloads-orchestration
+      mountPath: /workspace/workloads/orchestration
 
-# Shared PVC consumed by Ray head + workers (mounted at /workspace/data).
+# --- Shared Ray data PV/PVC (rendered by this chart's templates/) ----------
 rayData:
   enabled: true
   storage: 10Gi
@@ -75,7 +93,7 @@ rayData:
   accessModes:
     - ReadWriteMany
 
-# LocalStack subchart — S3 emulation only.
+# --- LocalStack (community subchart) ---------------------------------------
 localstack:
   enabled: true
   fullnameOverride: localstack
@@ -93,12 +111,12 @@ localstack:
   persistence:
     enabled: false
 
-# KubeRay operator subchart — provisions the RayCluster CRD controllers.
+# --- KubeRay operator (community subchart) ---------------------------------
 kuberay-operator:
   enabled: true
   fullnameOverride: kuberay-operator
 
-# Ray cluster subchart — custom image, env vars match the compose stack.
+# --- Ray cluster (community subchart) --------------------------------------
 ray-cluster:
   enabled: true
   fullnameOverride: ray-cluster

@@ -1,4 +1,10 @@
 dependencies:
+- name: mlflow
+  repository: file://../mlflow
+  version: 0.1.0
+- name: prefect
+  repository: file://../prefect
+  version: 0.1.0
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 18.3.0
@@ -11,5 +17,5 @@ dependencies:
 - name: ray-cluster
   repository: https://ray-project.github.io/kuberay-helm/
   version: 1.2.2
-digest: sha256:61435886bedd14976834235468d7ef046cc858671a787d10d69b8437c6b1389c
-generated: "2026-05-31T11:17:56.985709129Z"
+digest: sha256:36cd7ad29a27864f2723050bcda349cbecbd2f50cd9c70d3a1681511b496891c
+generated: "2026-06-06T19:04:00.720950967Z"

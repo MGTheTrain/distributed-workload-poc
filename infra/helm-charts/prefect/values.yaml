@@ -1,0 +1,24 @@
+enabled: true
+
+image:
+  repository: mgthetrain987/distributed-workload-poc-prefect
+  tag: latest
+  pullPolicy: IfNotPresent
+
+port: 4200
+rayAddress: "ray://ray-cluster-head-svc:10001"
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Pod-level volumes and container volumeMounts. Default empty so the subchart
+# is self-contained; the parent injects the workloads-orchestration ConfigMap
+# volume + mount here (that ConfigMap is owned by the parent chart). A consumer
+# can override or extend these — note Helm REPLACES list values on override.
+volumes: []
+volumeMounts: []

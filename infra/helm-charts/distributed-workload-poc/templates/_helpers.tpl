@@ -1,5 +1,7 @@
 {{/*
-Common labels for all distributed-workload-poc resources.
+Common labels for resources rendered directly by this (parent) chart —
+the workloads ConfigMaps and the Ray shared-data PV/PVC. The mlflow and
+prefect subcharts define their own label helpers.
 */}}
 {{- define "distributed-workload-poc.labels" -}}
 app.kubernetes.io/name: distributed-workload-poc

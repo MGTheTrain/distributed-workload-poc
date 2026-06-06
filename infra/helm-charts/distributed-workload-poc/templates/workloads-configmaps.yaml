@@ -1,3 +1,8 @@
+{{- /*
+  Workload ConfigMaps. These MUST stay in the parent: both the ray-cluster
+  subchart (etl/training/tuning/inference) and the prefect subchart
+  (orchestration) mount them, so they live at the common ancestor.
+*/}}
 {{- range $dir := list "etl" "training" "tuning" "inference" "orchestration" }}
 ---
 apiVersion: v1

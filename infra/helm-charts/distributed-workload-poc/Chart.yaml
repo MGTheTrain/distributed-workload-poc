@@ -3,13 +3,23 @@ name: distributed-workload-poc
 description: |
   Platform components for the distributed workload PoC — PostgreSQL,
   MLflow, Prefect, LocalStack (S3 emulation) and a Ray cluster on
-  KubeRay. Raw templates for the custom-image components; community
-  subcharts for LocalStack, PostgreSQL and Ray.
+  KubeRay. MLflow and Prefect are local subcharts (custom images);
+  community subcharts for LocalStack, PostgreSQL and Ray.
 type: application
 version: 0.1.0
 appVersion: "1.0"
 
 dependencies:
+  - name: mlflow
+    version: "0.1.0"
+    repository: "file://../mlflow"
+    condition: mlflow.enabled
+
+  - name: prefect
+    version: "0.1.0"
+    repository: "file://../prefect"
+    condition: prefect.enabled
+
   - name: postgresql
     version: "~18.3.0"
     repository: https://charts.bitnami.com/bitnami
