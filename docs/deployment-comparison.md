@@ -1,6 +1,8 @@
 # Deployment Options: Cloud vs VM vs HPC
 
-**Decision matrix for deploying distributed ML workloads.**
+**Decision guide for deploying distributed ML workloads.**
+
+> **Note on framing:** These options are common deployment *approaches*, not strictly equivalent technologies. VMs and HPC clusters are *infrastructure*; Kubernetes and Slurm are *orchestration* that runs on top of it (managed Kubernetes like EKS runs on cloud VMs; self-hosted Kubernetes runs on VMs or bare metal). They're listed together because teams evaluate them together when deciding how to deploy ML workloads — but they sit at different layers of the stack.
 
 ## Deployment Models
 
@@ -59,8 +61,8 @@
 **Systems:** [NERSC](https://www.nersc.gov/), [TACC](https://www.tacc.utexas.edu/), [Summit](https://www.olcf.ornl.gov/summit/)
 
 **Pros:**
-- ✅ Very high throughput for tightly coupled workloads
-- ✅ Efficient use of specialized interconnects (e.g., InfiniBand, NVLink where available)
+- ✅ Very high efficiency for tightly coupled workloads
+- ✅ Efficient use of specialized interconnects (e.g., InfiniBand, RoCE; plus intra-node NVLink where available)
 - ✅ Mature batch scheduling for large-scale compute jobs
 
 **Cons:**
@@ -74,14 +76,18 @@
 
 | Factor | Managed K8s | Self-Hosted K8s | VMs | HPC |
 |--------|-------------|-----------------|-----|-----|
-| Setup Time | Minutes | Days | Minutes | Weeks |
+| Time to initial deployment* | Minutes | Days–weeks | Minutes | Minutes (existing center) to months (build) |
 | Scaling | Automatic (config-dependent) | Manual / custom | Manual | Fixed per job |
 | Fault Tolerance | Infrastructure-level self-healing | Infrastructure-level (DIY responsibility) | None inherent | Limited scheduler support |
-| Cost | Medium–High | Low–Medium | Low–Medium | High (specialized hardware) |
+| Infrastructure cost model | Usage-based cloud spending | Capital + operations | Usage-based or owned | Shared institutional or dedicated |
 | Complexity | Medium | High | Low | High |
-| Throughput | High | High | Medium–High | Very high |
+| Operational scalability | High | High | Low (manual) | High (batch) |
 | Flexibility | High | High | High | Low |
 | Best For | Production ML systems | On-prem / custom infra | Experiments | HPC / pretraining |
+
+\* *Assumes prerequisites exist (cloud account/VPC/IAM for managed offerings, an account on an existing HPC center, etc.). Building the underlying infrastructure from scratch takes substantially longer.*
+
+> **On cost and throughput:** Raw cost and raw throughput are driven mostly by GPU type, utilization, networking, storage, and implementation — not by the deployment model itself. The same 8×H100 hardware delivers comparable throughput whether driven by torchrun on a VM or by a Ray job on Kubernetes; orchestration adds overhead but it's usually small. The matrix therefore compares *cost model* and *operational scalability* rather than a single "cost" or "throughput" score.
 
 ## Ray + Managed Kubernetes (Common Pattern)
 
@@ -93,6 +99,10 @@
 **Important caveat:**
 - Fault tolerance and elasticity depend on both **Ray configuration** and **training framework support**, not Kubernetes alone.
 
+## A Note on Managed ML Platforms
+
+Many teams weighing "VMs vs Kubernetes vs HPC" ultimately choose a fully-managed ML platform instead — e.g. [Amazon SageMaker](https://aws.amazon.com/sagemaker/), [Vertex AI](https://cloud.google.com/vertex-ai), or [Azure Machine Learning](https://azure.microsoft.com/en-us/products/machine-learning). These trade infrastructure control for reduced operational burden and are worth evaluating alongside the self-operated options above, especially for smaller teams.
+
 ## Resources
 - https://docs.ray.io/en/latest/cluster/kubernetes/index.html
 - https://aws.github.io/aws-eks-best-practices/
@@ -100,4 +110,4 @@
 
 ## TL;DR
 
-Managed Kubernetes is a common default for scalable ML systems, while HPC is optimized for tightly coupled batch workloads and VMs remain the most flexible low-level option requiring manual orchestration.
+Managed Kubernetes is a common default for scalable ML systems, while HPC is optimized for tightly coupled batch workloads and VMs remain the most flexible low-level option requiring manual orchestration. These sit at different layers of the stack, and raw cost/throughput depend more on hardware and utilization than on the deployment model.
