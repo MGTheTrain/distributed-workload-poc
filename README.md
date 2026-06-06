@@ -6,15 +6,13 @@
 
 PoC demonstrating distributed workload orchestration using **Ray** as the primary compute framework with **Prefect** for workflow orchestration, supporting cloud-native deployments (Kubernetes).
 
-> **NOTE:** This PoC focuses on local development (Docker Compose) and production-like testing (Kind Kubernetes). For production deployments, managed Kubernetes services (AWS EKS, GCP GKE, Azure AKS) with Ray are recommended, as they provide managed control planes, high availability and support for cluster autoscaling. See [Deployment Comparison](./docs/deployment-comparison.md) for details.
-
 ## Backlog
 
 Tracked future improvements and planned work items are maintained in [BACKLOG.md](./BACKLOG.md).
 
 ## Quick Start
 
-### Local Development (Docker Compose)
+### Docker Compose
 
 Docker is the default runtime.
 
